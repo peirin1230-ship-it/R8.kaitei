@@ -1,0 +1,66 @@
+=== R6 PDF Page 41: A230-4周辺のchar情報 ===
+  text="Ａ２３０ 精神病棟入院時医学管理加算（１日につき）     "
+    char="病" U+75C5
+    char="棟" U+68DF
+    char="入" U+5165
+    char="院" U+9662
+    char="時" U+6642
+    char="医" U+533B
+    char="学" U+5B66
+    char="管" U+7BA1
+    char="理" U+7406
+    char="（" U+FF08
+    char="１" U+FF11
+    char="日" U+65E5
+    char="に" U+306B
+    char="つ" U+3064
+    char="き" U+304D
+    char="）" U+FF09
+  text="Ａ２３０－２ 精神科地域移行実施加算（１日につき）     "
+    char="－" U+FF0D
+    char="地" U+5730
+    char="域" U+57DF
+    char="移" U+79FB
+    char="行" U+884C
+    char="実" U+5B9F
+    char="施" U+65BD
+    char="（" U+FF08
+    char="１" U+FF11
+    char="日" U+65E5
+    char="に" U+306B
+    char="つ" U+3064
+    char="き" U+304D
+    char="）" U+FF09
+    DASH: "－" U+FF0D
+  text="Ａ２３０－３ 精神科身体合併症管理加算（１日につき） "
+    char="－" U+FF0D
+    char="身" U+8EAB
+    char="体" U+4F53
+    char="合" U+5408
+    char="併" U+4F75
+    char="症" U+75C7
+    char="管" U+7BA1
+    char="理" U+7406
+    char="（" U+FF08
+    char="１" U+FF11
+    char="日" U+65E5
+    char="に" U+306B
+    char="つ" U+3064
+    char="き" U+304D
+    char="）" U+FF09
+    DASH: "－" U+FF0D
+  text="Ａ２３０－４ 精神科リエゾンチーム加算（週１回）      "
+    char="－" U+FF0D
+    char="４" U+FF14
+    char="（" U+FF08
+    char="週" U+9031
+    char="１" U+FF11
+    char="回" U+56DE
+    char="）" U+FF09
+    DASH: "－" U+FF0D
+    DASH: "ー" U+30FC
+
+=== R8 PDF: A230-4周辺のchar情報 ===
+  page 46: text="Ａ２３０－４ 精神科リエゾンチーム加算 "
+    DASH: "－" U+FF0D
+    DASH: "ー" U+30FC
