@@ -41,9 +41,9 @@ R6_TOC_PAGES = 2
 # 正規表現パターン（extract_shinkyuu.py から再利用）
 # ============================================================
 RE_CHAPTER = re.compile(r'^第([１２３４５６７８９０\d]+)章\s+(.*)')
-RE_PART = re.compile(r'^第([１２３４５６７８９０\d]+)部\s+(.*)')
+RE_PART = re.compile(r'^第([１２３４５６７８９０\d]+)\s*部\s+(.*)')
 RE_SECTION = re.compile(r'^第([１２３４５６７８９０\d]+)節\s+(.*)')
-RE_SUBSECTION = re.compile(r'^第([１２３４５６７８９０\d]+)款\s+(.*)')
+RE_SUBSECTION = re.compile(r'^第([１２３４５６７８９０\d]+)\s*款\s+(.*)')
 RE_TSUSOKU = re.compile(r'^通則')
 RE_KUBUN = re.compile(
     r'^([ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰａ-ｚA-Z]'
@@ -53,7 +53,7 @@ RE_NOTE_NUM_ONLY = re.compile(r'^([０-９0-9１２３４５６７８９]+)\s')
 RE_PAGE_NUM = re.compile(r'^\d{1,4}$')
 # 見出しのみの行を検出（「第N部 名前」「第N節 名前」「区分」「削除」等）
 RE_HEADING_ONLY = re.compile(
-    r'^(第[１２３４５６７８９０\d]+[章部節款]\s+.*|区分|削除\s*|通則)$')
+    r'^(第[１２３４５６７８９０\d]+\s*[章部節款]\s+.*|区分|削除\s*|通則)$')
 # カナ項目検出
 RE_KANA_ITEM = re.compile(r'^([アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン])\s')
 # サブアイテム検出パターン（行頭）
@@ -192,7 +192,7 @@ class HierarchyTracker:
 
         m = RE_PART.match(text)
         if m and x_pos < HEADING_MAX_X:
-            self.part = f"第{m.group(1)}部 {m.group(2)}".strip()
+            self.part = f"第{m.group(1).strip()}部 {m.group(2)}".strip()
             self.section = ""
             self.subsection = ""
             self.item_code = ""
@@ -202,7 +202,7 @@ class HierarchyTracker:
 
         m = RE_SECTION.match(text)
         if m and x_pos < HEADING_MAX_X:
-            self.section = f"第{m.group(1)}節 {m.group(2)}".strip()
+            self.section = f"第{m.group(1).strip()}節 {m.group(2)}".strip()
             self.subsection = ""
             self.item_code = ""
             self.item_name = ""
@@ -211,7 +211,7 @@ class HierarchyTracker:
 
         m = RE_SUBSECTION.match(text)
         if m and x_pos < HEADING_MAX_X:
-            self.subsection = f"第{m.group(1)}款 {m.group(2)}".strip()
+            self.subsection = f"第{m.group(1).strip()}款 {m.group(2)}".strip()
             self.item_code = ""
             self.item_name = ""
             self.note = ""

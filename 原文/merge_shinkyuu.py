@@ -335,6 +335,66 @@ def should_keep_row(row):
     return _normalize_text(go_text) != _normalize_text(zen_text)
 
 
+def fill_missing_sections(kokuji_rows, tsuchi_rows):
+    """通知の空白節を告示の情報から補完する。
+
+    通知PDFでは一部の部（例: 第９部 処置）で節見出しが出現しないため、
+    告示側の節情報を使って空白を埋める。
+
+    1. 告示の (部, 項目コード) → 節 のマッピングを構築
+    2. 通知の空白節を直接マッチで補完
+    3. 直接マッチがない場合、同じ部の告示項目順で直近の節を使用
+    """
+    # 告示から部ごとの項目コード→節の対応を構築（出現順を保持）
+    section_by_item = {}
+    bu_code_sections = {}  # bu → [(code, section), ...]
+
+    for row in kokuji_rows:
+        bu = row[1].get('text', '') if len(row) > 1 else ''
+        setu = row[2].get('text', '') if len(row) > 2 else ''
+        code_field = row[4].get('text', '') if len(row) > 4 else ''
+        code = code_field.split(' ')[0].split('\u3000')[0]
+        if bu and setu and code and code != '通則':
+            key = (bu, code)
+            if key not in section_by_item:
+                section_by_item[key] = setu
+            if bu not in bu_code_sections:
+                bu_code_sections[bu] = []
+            if not bu_code_sections[bu] or bu_code_sections[bu][-1] != (code, setu):
+                bu_code_sections[bu].append((code, setu))
+
+    filled = 0
+    for row in tsuchi_rows:
+        setu = row[2].get('text', '') if len(row) > 2 else ''
+        if setu:
+            continue
+        bu = row[1].get('text', '') if len(row) > 1 else ''
+        code_field = row[4].get('text', '') if len(row) > 4 else ''
+        code = code_field.split(' ')[0].split('\u3000')[0]
+        if not bu or not code or code == '通則':
+            continue
+
+        # 直接マッチ
+        lookup_setu = section_by_item.get((bu, code))
+
+        # フォールバック: 告示の同じ部で、項目コード順で直近の節を使用
+        if not lookup_setu and bu in bu_code_sections:
+            last_setu = ''
+            for kcode, ksetu in bu_code_sections[bu]:
+                if kcode > code:
+                    break
+                last_setu = ksetu
+            if last_setu:
+                lookup_setu = last_setu
+
+        if lookup_setu:
+            row[2] = {'type': 'plain', 'text': lookup_setu,
+                      'segments': [(lookup_setu, False)]}
+            filled += 1
+
+    return filled
+
+
 def extract_group_key(row):
     """行から (部, 区分番号) のグループキーを抽出する。
 
@@ -441,6 +501,11 @@ def main():
           f"（{kokuji_before - len(kokuji_rows)}件削除）", file=sys.stderr)
     print(f"  通知: {tsuchi_before}件 → {len(tsuchi_rows)}件"
           f"（{tsuchi_before - len(tsuchi_rows)}件削除）", file=sys.stderr)
+
+    # 通知の空白節を告示から補完
+    filled = fill_missing_sections(kokuji_rows, tsuchi_rows)
+    if filled:
+        print(f"  節補完: 通知{filled}件の空白節を告示から補完", file=sys.stderr)
 
     print("\n[Phase 2] グループ化・並び替え", file=sys.stderr)
     kokuji_groups, kokuji_order = group_rows_by_key(kokuji_rows)
