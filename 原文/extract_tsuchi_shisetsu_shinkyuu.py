@@ -436,7 +436,9 @@ def compute_diff_segments(r8_text, r6_text):
             r8_segments.append((r8_part, False))
             r6_segments.append((r6_part, False))
         elif op == 'replace':
-            if not r6_part.strip() and not r8_part.strip():
+            # スペースを全て除去して同一なら改行位置の違いのみ
+            if (not r6_part.strip() and not r8_part.strip()) or \
+               re.sub(r'\s', '', r6_part) == re.sub(r'\s', '', r8_part):
                 r6_segments.append((r6_part, False))
                 r8_segments.append((r8_part, False))
             else:
