@@ -51,8 +51,11 @@ CONFIGS = [
 ]
 
 MIN_FONT_SIZE = 5.0
+RUBY_MAX_SIZE = 8.0  # フリガナ（ルビ）の最大フォントサイズ
 # 縦書きPDFの列グループ化許容差（x座標の差）
 X_GROUP_TOLERANCE = 5.0
+# ページ番号の除外y閾値（ページ下部のページ番号を除去）
+PAGE_NUM_Y_THRESHOLD = 790.0
 
 # ============================================================
 # 正規表現パターン（告示PDF用）
@@ -104,12 +107,21 @@ def extract_page_lines_vertical(page):
             for span in line['spans']:
                 if span['size'] < MIN_FONT_SIZE:
                     continue
+                # フリガナ（ルビ）を除外：小さいフォントのひらがな・カタカナ
+                if span['size'] < RUBY_MAX_SIZE:
+                    span_text = ''.join(
+                        ch['c'] for ch in span.get('chars', []))
+                    if re.match(r'^[ぁ-んァ-ヶー]+$', span_text.strip()):
+                        continue
                 for ch in span.get('chars', []):
                     c = ch['c']
                     if not c.strip():
                         continue
-                    x = ch['bbox'][0]
                     y = ch['bbox'][1]
+                    # ページ下部のページ番号を除外
+                    if y > PAGE_NUM_Y_THRESHOLD:
+                        continue
+                    x = ch['bbox'][0]
                     h = ch['bbox'][3] - ch['bbox'][1]
                     chars.append((x, y, c, h))
 
@@ -505,10 +517,13 @@ def process_pair(config):
     r8_blocks_raw = extract_blocks_from_pdf(r8_pdf, r8_toc)
     r6_blocks_raw = extract_blocks_from_pdf(r6_pdf, r6_toc)
 
+    # 見出しのみのブロックと前文（セクション未設定）を除外
     r8_blocks = [b for b in r8_blocks_raw
-                 if not is_heading_only_block(b['text'])]
+                 if not is_heading_only_block(b['text'])
+                 and b['section']]
     r6_blocks = [b for b in r6_blocks_raw
-                 if not is_heading_only_block(b['text'])]
+                 if not is_heading_only_block(b['text'])
+                 and b['section']]
     print(f"  R8: {len(r8_blocks_raw)} → {len(r8_blocks)} ブロック（見出し除外後）",
           file=sys.stderr)
     print(f"  R6: {len(r6_blocks_raw)} → {len(r6_blocks)} ブロック（見出し除外後）",
@@ -654,7 +669,7 @@ def process_pair(config):
     })
     ul_fmt = wb.add_format({
         'font_name': '游ゴシック', 'font_size': 11,
-        'underline': True,
+        'bold': True, 'underline': True,
         'text_wrap': True, 'valign': 'top',
     })
 

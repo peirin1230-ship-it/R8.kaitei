@@ -59,8 +59,9 @@ RE_PAGE_NUM = re.compile(
 RE_BETTEN = re.compile(r'^別添\s*([１２３４５６７８９0-9]+(?:の[１２３４５６７８９0-9]+)?)\s*$')
 
 # 第N / 第NのM パターン（セクション見出し）
+# ※「第57号」等の告示番号を誤検出しないよう、数字は3桁以内に制限
 RE_SECTION = re.compile(
-    r'^第\s*([１２３４５６７８９０0-9]+(?:\s*の\s*[１２３４５６７８９０0-9]+)*)\s+(.+)')
+    r'^第\s*([１２３４５６７８９０0-9]{1,3}(?:\s*の\s*[１２３４５６７８９０0-9]{1,3})*)\s+(.+)')
 
 # 番号付き項目（1, 2, 3, ... や１, ２, ３, ...）
 RE_NUMBERED_ITEM = re.compile(r'^([１２３４５６７８９０0-9]+)\s')
@@ -180,14 +181,17 @@ class HierarchyTracker:
             return True
 
         # 第Nパターン（セクション見出し）
+        # 「第57号」「第１項」等の法令参照を誤検出しないよう、
+        # タイトル部分が「号」「条」「項」で始まるものを除外
         m = RE_SECTION.match(text)
         if m and x_pos < 100:
-            sec_num = m.group(1).replace(' ', '')
             sec_title = m.group(2).strip()
-            self.section = f"第{sec_num}"
-            self.section_name = sec_title
-            self.item_num = ""
-            return True
+            if not re.match(r'^[号条項）)]', sec_title):
+                sec_num = m.group(1).replace(' ', '')
+                self.section = f"第{sec_num}"
+                self.section_name = sec_title
+                self.item_num = ""
+                return True
 
         # 番号付き項目
         m = RE_NUMBERED_ITEM.match(text)
@@ -216,8 +220,11 @@ def is_block_boundary(text, x0):
     """テキストが新しいブロック境界かを判定"""
     if RE_BETTEN.match(text):
         return True
-    if RE_SECTION.match(text) and x0 < 100:
-        return True
+    m = RE_SECTION.match(text)
+    if m and x0 < 100:
+        title = m.group(2).strip()
+        if not re.match(r'^[号条項）)]', title):
+            return True
     if RE_NUMBERED_ITEM.match(text) and x0 < 100:
         return True
     return False
@@ -503,11 +510,13 @@ def process_pair(config):
     r8_blocks_raw = extract_blocks_from_pdf(r8_pdf)
     r6_blocks_raw = extract_blocks_from_pdf(r6_pdf)
 
-    # 見出しのみのブロックを除外
+    # 見出しのみのブロックを除外、前文（別添・セクション未設定）も除外
     r8_blocks = [b for b in r8_blocks_raw
-                 if not is_heading_only_block(b['text'])]
+                 if not is_heading_only_block(b['text'])
+                 and (b['betten'] or b['section'])]
     r6_blocks = [b for b in r6_blocks_raw
-                 if not is_heading_only_block(b['text'])]
+                 if not is_heading_only_block(b['text'])
+                 and (b['betten'] or b['section'])]
     print(f"  R8: {len(r8_blocks_raw)} → {len(r8_blocks)} ブロック（見出し除外後）",
           file=sys.stderr)
     print(f"  R6: {len(r6_blocks_raw)} → {len(r6_blocks)} ブロック（見出し除外後）",
@@ -655,7 +664,7 @@ def process_pair(config):
     })
     ul_fmt = wb.add_format({
         'font_name': '游ゴシック', 'font_size': 11,
-        'underline': True,
+        'bold': True, 'underline': True,
         'text_wrap': True, 'valign': 'top',
     })
 
