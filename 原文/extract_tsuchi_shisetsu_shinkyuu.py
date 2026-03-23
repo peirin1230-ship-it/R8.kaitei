@@ -65,6 +65,11 @@ RE_SECTION = re.compile(
 
 # 番号付き項目（1, 2, 3, ... や１, ２, ３, ...）
 RE_NUMBERED_ITEM = re.compile(r'^([１２３４５６７８９０0-9]+)\s')
+# 番号直後が法令参照・日付の継続の場合は項番ではない
+# 例: "23 年政令..." "69 号）..." "18 対１..." "31 日まで..."
+RE_FALSE_ITEM_AFTER = re.compile(
+    r'^(号|条|項|対[１２３４５６７８９０0-9]|月[１２３４５６７８９０0-9末]'
+    r'|年[^間度以]|日[^本常間])')
 
 # 見出しのみの行
 RE_HEADING_ONLY = re.compile(
@@ -193,12 +198,14 @@ class HierarchyTracker:
                 self.item_num = ""
                 return True
 
-        # 番号付き項目
+        # 番号付き項目（法令参照・日付の継続は除外）
         m = RE_NUMBERED_ITEM.match(text)
         if m and x_pos < 100:
-            self.item_num = m.group(1)
-            self.last_item_x = x_pos
-            return True
+            after = text[m.end():].strip()
+            if not RE_FALSE_ITEM_AFTER.match(after):
+                self.item_num = m.group(1)
+                self.last_item_x = x_pos
+                return True
 
         return False
 
@@ -225,8 +232,11 @@ def is_block_boundary(text, x0):
         title = m.group(2).strip()
         if not re.match(r'^[号条項）)]', title):
             return True
-    if RE_NUMBERED_ITEM.match(text) and x0 < 100:
-        return True
+    m = RE_NUMBERED_ITEM.match(text)
+    if m and x0 < 100:
+        after = text[m.end():].strip()
+        if not RE_FALSE_ITEM_AFTER.match(after):
+            return True
     return False
 
 
