@@ -443,6 +443,13 @@ def compute_diff_segments(r8_text, r6_text):
             else:
                 r6_segments.append((r6_part, True))
 
+    # 変更セグメントが1つもなければ同一テキスト扱い
+    # （PDFの改行位置の違いによるスペース差分のみの場合）
+    r8_has_change = any(is_changed for _, is_changed in r8_segments)
+    r6_has_change = any(is_changed for _, is_changed in r6_segments)
+    if not r8_has_change and not r6_has_change:
+        return None, None
+
     return r8_segments, r6_segments
 
 
