@@ -739,6 +739,12 @@ def main():
         key = make_block_key_short(b)
         r6_by_short_key.setdefault(key, []).append(b)
 
+    # サブアイテム分割ブロック用: item_codeのみのインデックス
+    # 注番号がR8/R6間でずれた場合のフォールバック
+    r6_by_code = {}
+    for b in r6_blocks:
+        r6_by_code.setdefault(b['item_code'], []).append(b)
+
     matched_r6_ids = set()
     r6_id_to_idx = {id(b): i for i, b in enumerate(r6_blocks)}
     r6_idx_to_output_pos = {}
@@ -765,6 +771,7 @@ def main():
                 r6_match = None
                 skip_fallback = True
 
+        # フォールバック1: 短いキーでマッチ（類似度で選択）
         if r6_match is None and not skip_fallback:
             short_key = make_block_key_short(r8b)
             if short_key in r6_by_short_key:
@@ -774,6 +781,20 @@ def main():
                     best = max(candidates,
                                key=lambda c: text_similarity(r8b['text'], c['text']))
                     if text_similarity(r8b['text'], best['text']) > 0.2:
+                        r6_match = best
+
+        # フォールバック2: item_codeのみでマッチ（注番号ズレ対策）
+        # サブアイテム分割ブロックで注番号がR8/R6間で変わった場合に対応
+        if r6_match is None and not skip_fallback:
+            code = r8b['item_code']
+            if code in r6_by_code and code != '通則':
+                candidates = [c for c in r6_by_code[code]
+                              if id(c) not in matched_r6_ids]
+                if candidates:
+                    best = max(candidates,
+                               key=lambda c: text_similarity(r8b['text'], c['text']))
+                    sim = text_similarity(r8b['text'], best['text'])
+                    if sim > 0.5:
                         r6_match = best
 
         if r6_match:
