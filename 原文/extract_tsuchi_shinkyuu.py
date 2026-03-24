@@ -65,6 +65,14 @@ RE_SUBITEM_ALPHA = re.compile(r'^([ａｂｃｄｅｆｇｈｉｊｋｌｍ])[\s\
 RE_PAREN_NAME = re.compile(
     r'^[（(][０-９0-9]+[）)]\s*(.+?)\s*(?:[０-９0-9,，]+点|[①②③④⑤]|$)')
 RE_IS_ITEM_NAME = re.compile(r'(?:料|加算[０-９0-9]*)$')
+# 番号付きサブ項目の検出（B001「１ ウイルス疾患指導料」等）
+RE_NAMED_SUBITEM = re.compile(
+    r'^([１２３４５６７８９０0-9]+)\s+'
+    r'(.+?(?:料|管理|加算|指導|検査|判断|削除)(?:\s*[（(].+?[）)])?)\s*$')
+RE_NAMED_SUBITEM_WITH_POINTS = re.compile(
+    r'^([１２３４５６７８９０0-9]+)\s+'
+    r'(.+?(?:料|管理|加算|指導|検査|判断|削除)(?:\s*[（(].+?[）)])?)'
+    r'\s+[\d０-９,，]+点')
 
 
 # ============================================================
@@ -145,7 +153,7 @@ def extract_page_lines_single_column(page):
 # ============================================================
 
 class HierarchyTracker:
-    """章/部/節/款/通則/区分番号/注 の階層を追跡する"""
+    """章/部/節/款/通則/区分番号/注/サブ項目 の階層を追跡する"""
 
     def __init__(self):
         self.chapter = ""
@@ -154,10 +162,21 @@ class HierarchyTracker:
         self.subsection = ""
         self.item_code = ""
         self.item_name = ""
+        self.sub_item = ""  # B001「１ ウイルス疾患指導料」等の番号付きサブ項目
         self.note = ""
         self.last_note_x = 0
         self.last_item_x = 0
         self.name_incomplete = False
+
+    def _check_named_subitem(self, text):
+        """番号付きサブ項目（B001「１ ウイルス疾患指導料」等）を検出する。"""
+        m = RE_NAMED_SUBITEM.match(text)
+        if m:
+            return m.group(1), m.group(2).strip()
+        m = RE_NAMED_SUBITEM_WITH_POINTS.match(text)
+        if m:
+            return m.group(1), m.group(2).strip()
+        return None, None
 
     def update(self, text, x_pos):
         if not text:
@@ -187,6 +206,7 @@ class HierarchyTracker:
             self.subsection = ""
             self.item_code = ""
             self.item_name = ""
+            self.sub_item = ""
             self.note = ""
             return True
 
@@ -197,6 +217,7 @@ class HierarchyTracker:
             self.subsection = ""
             self.item_code = ""
             self.item_name = ""
+            self.sub_item = ""
             self.note = ""
             return True
 
@@ -206,6 +227,7 @@ class HierarchyTracker:
             self.subsection = ""
             self.item_code = ""
             self.item_name = ""
+            self.sub_item = ""
             self.note = ""
             return True
 
@@ -214,6 +236,7 @@ class HierarchyTracker:
             self.subsection = f"第{m.group(1).strip()}款 {m.group(2)}".strip()
             self.item_code = ""
             self.item_name = ""
+            self.sub_item = ""
             self.note = ""
             return True
 
@@ -221,6 +244,7 @@ class HierarchyTracker:
         if m:
             self.item_code = "通則"
             self.item_name = ""
+            self.sub_item = ""
             self.note = ""
             self.last_item_x = x_pos
             return True
@@ -231,11 +255,19 @@ class HierarchyTracker:
             raw_name = m.group(2).strip()
             raw_name = re.sub(r'\s+[\d０-９,，]+点.*$', '', raw_name)
             self.item_name = raw_name.strip()
+            self.sub_item = ""
             self.note = ""
             self.last_item_x = x_pos
             op = self.item_name.count('（') + self.item_name.count('(')
             cp = self.item_name.count('）') + self.item_name.count(')')
             self.name_incomplete = (op > cp)
+            return True
+
+        # 番号付きサブ項目の検出（注の検出より前に行う）
+        sub_num, sub_name = self._check_named_subitem(text)
+        if sub_num is not None:
+            self.sub_item = f"{sub_num} {sub_name}"
+            self.note = ""
             return True
 
         m = RE_NOTE.match(text)
@@ -265,6 +297,7 @@ class HierarchyTracker:
             'subsection': self.subsection,
             'item_code': self.item_code,
             'item_name': self.item_name,
+            'sub_item': self.sub_item,
             'note': self.note,
         }
 
@@ -286,6 +319,9 @@ def is_block_boundary(text, x0):
     if RE_SECTION.match(text) and x0 < HEADING_MAX_X:
         return True
     if RE_SUBSECTION.match(text) and x0 < HEADING_MAX_X:
+        return True
+    # 番号付きサブ項目（B001「１ ウイルス疾患指導料」等）
+    if RE_NAMED_SUBITEM.match(text) or RE_NAMED_SUBITEM_WITH_POINTS.match(text):
         return True
     # 注の開始
     m = RE_NOTE.match(text)
@@ -432,6 +468,7 @@ def extract_blocks_from_pdf(pdf_path, toc_pages):
                 'subsection': current_ctx['subsection'],
                 'item_code': current_ctx['item_code'],
                 'item_name': current_ctx['item_name'],
+                'sub_item': current_ctx.get('sub_item', ''),
                 'note': current_ctx['note'],
                 'text': block_text,
                 'page': current_page,
@@ -825,6 +862,7 @@ def main():
             'subsection': r8b['subsection'],
             'item_code': r8b['item_code'],
             'item_name': r8b['item_name'],
+            'sub_item': r8b.get('sub_item', ''),
             'note': r8b['note'],
             'r8_segments': r8_segments,
             'r6_segments': r6_segments,
@@ -849,6 +887,7 @@ def main():
                 'subsection': r6b['subsection'],
                 'item_code': r6b['item_code'],
                 'item_name': r6b['item_name'],
+                'sub_item': r6b.get('sub_item', ''),
                 'note': r6b['note'],
                 'r8_segments': [("（削除）", False)],
                 'r6_segments': [(r6_text, True)],
@@ -965,6 +1004,8 @@ def main():
         item_display = row['item_code']
         if row.get('item_name'):
             item_display = f"{row['item_code']} {row['item_name']}"
+        if row.get('sub_item'):
+            item_display = f"{item_display} {row['sub_item']}"
 
         ws.write_string(r, 0, row.get('chapter', ''), normal_fmt)
         ws.write_string(r, 1, row.get('part', ''), normal_fmt)
