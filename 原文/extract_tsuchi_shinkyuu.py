@@ -526,6 +526,10 @@ def compute_diff_segments(r8_text, r6_text):
     if r8_norm == r6_norm:
         return None, None
 
+    # スペースを除去した全文が同一なら改行位置の違いのみ（同一扱い）
+    if re.sub(r'\s', '', r8_norm) == re.sub(r'\s', '', r6_norm):
+        return None, None
+
     sm = difflib.SequenceMatcher(None, r6_norm, r8_norm, autojunk=False)
     ratio = sm.ratio()
 
@@ -535,29 +539,75 @@ def compute_diff_segments(r8_text, r6_text):
     r8_segments = []
     r6_segments = []
 
-    for op, i1, i2, j1, j2 in sm.get_opcodes():
+    # opcodeを一括取得して文字シフトパターンを検出
+    opcodes = sm.get_opcodes()
+
+    for oi, (op, i1, i2, j1, j2) in enumerate(opcodes):
         r6_part = r6_norm[i1:i2]
         r8_part = r8_norm[j1:j2]
         if op == 'equal':
             r8_segments.append((r8_part, False))
             r6_segments.append((r6_part, False))
         elif op == 'replace':
-            if not r6_part.strip() and not r8_part.strip():
+            # スペースを全て除去して同一なら改行位置の違いのみ
+            if (not r6_part.strip() and not r8_part.strip()) or \
+               re.sub(r'\s', '', r6_part) == re.sub(r'\s', '', r8_part):
                 r6_segments.append((r6_part, False))
                 r8_segments.append((r8_part, False))
             else:
-                r6_segments.append((r6_part, True))
-                r8_segments.append((r8_part, True))
+                # 大きなreplaceブロック内の改行差分を分離するため再分析
+                sub_sm = difflib.SequenceMatcher(
+                    None, r6_part, r8_part, autojunk=False)
+                for sub_op, si1, si2, sj1, sj2 in sub_sm.get_opcodes():
+                    sr6 = r6_part[si1:si2]
+                    sr8 = r8_part[sj1:sj2]
+                    if sub_op == 'equal':
+                        r6_segments.append((sr6, False))
+                        r8_segments.append((sr8, False))
+                    elif sub_op == 'replace':
+                        if re.sub(r'\s', '', sr6) == re.sub(r'\s', '', sr8):
+                            r6_segments.append((sr6, False))
+                            r8_segments.append((sr8, False))
+                        else:
+                            r6_segments.append((sr6, True))
+                            r8_segments.append((sr8, True))
+                    elif sub_op == 'insert':
+                        r8_segments.append((sr8, bool(sr8.strip())))
+                    elif sub_op == 'delete':
+                        r6_segments.append((sr6, bool(sr6.strip())))
         elif op == 'insert':
-            if not r8_part.strip():
-                r8_segments.append((r8_part, False))
-            else:
-                r8_segments.append((r8_part, True))
+            # 改行位置の違いによる文字シフトを検出:
+            # insert(X) + equal(' ') + delete(X) パターン
+            is_shift = False
+            if r8_part.strip() and len(r8_part.strip()) <= 2:
+                if oi + 2 < len(opcodes):
+                    next_op = opcodes[oi + 1]
+                    next2_op = opcodes[oi + 2]
+                    if (next_op[0] == 'equal' and
+                        r6_norm[next_op[1]:next_op[2]].strip() == '' and
+                        next2_op[0] == 'delete' and
+                        r6_norm[next2_op[1]:next2_op[2]] == r8_part):
+                        is_shift = True
+            r8_segments.append((r8_part, not is_shift and bool(r8_part.strip())))
         elif op == 'delete':
-            if not r6_part.strip():
-                r6_segments.append((r6_part, False))
-            else:
-                r6_segments.append((r6_part, True))
+            # delete(X) + equal(' ') + insert(X) パターン
+            is_shift = False
+            if r6_part.strip() and len(r6_part.strip()) <= 2:
+                if oi + 2 < len(opcodes):
+                    next_op = opcodes[oi + 1]
+                    next2_op = opcodes[oi + 2]
+                    if (next_op[0] == 'equal' and
+                        r8_norm[next_op[3]:next_op[4]].strip() == '' and
+                        next2_op[0] == 'insert' and
+                        r8_norm[next2_op[3]:next2_op[4]] == r6_part):
+                        is_shift = True
+            r6_segments.append((r6_part, not is_shift and bool(r6_part.strip())))
+
+    # 変更セグメントが1つもなければ同一テキスト扱い
+    r8_has_change = any(is_changed for _, is_changed in r8_segments)
+    r6_has_change = any(is_changed for _, is_changed in r6_segments)
+    if not r8_has_change and not r6_has_change:
+        return None, None
 
     return r8_segments, r6_segments
 
