@@ -68,11 +68,12 @@ RE_IS_ITEM_NAME = re.compile(r'(?:料|加算[０-９0-9]*)$')
 # 番号付きサブ項目の検出（B001「１ ウイルス疾患指導料」等）
 RE_NAMED_SUBITEM = re.compile(
     r'^([１２３４５６７８９０0-9]+)\s+'
-    r'(.+?(?:料|管理|加算|指導|検査|判断|削除)(?:\s*[（(].+?[）)])?)\s*$')
+    r'(.{2,25}?(?:料|指導|削除)(?:\s*[（(].+?[）)])?)\s*$')
 RE_NAMED_SUBITEM_WITH_POINTS = re.compile(
     r'^([１２３４５６７８９０0-9]+)\s+'
-    r'(.+?(?:料|管理|加算|指導|検査|判断|削除)(?:\s*[（(].+?[）)])?)'
+    r'(.{2,25}?(?:料|指導|削除)(?:\s*[（(].+?[）)])?)'
     r'\s+[\d０-９,，]+点')
+RE_NOT_SUBITEM_NAME = re.compile(r'場合|した|する|について|ものと|である|おいて|により|から|まで')
 
 
 # ============================================================
@@ -169,13 +170,15 @@ class HierarchyTracker:
         self.name_incomplete = False
 
     def _check_named_subitem(self, text):
-        """番号付きサブ項目（B001「１ ウイルス疾患指導料」等）を検出する。"""
-        m = RE_NAMED_SUBITEM.match(text)
-        if m:
-            return m.group(1), m.group(2).strip()
-        m = RE_NAMED_SUBITEM_WITH_POINTS.match(text)
-        if m:
-            return m.group(1), m.group(2).strip()
+        """番号付きサブ項目（B001「１ ウイルス疾患指導料」等）を検出する。
+        条件文（注の本文）は除外する。"""
+        for pat in (RE_NAMED_SUBITEM, RE_NAMED_SUBITEM_WITH_POINTS):
+            m = pat.match(text)
+            if m:
+                name = m.group(2).strip()
+                if RE_NOT_SUBITEM_NAME.search(name):
+                    continue
+                return m.group(1), name
         return None, None
 
     def update(self, text, x_pos):
