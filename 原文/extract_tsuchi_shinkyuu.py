@@ -792,6 +792,12 @@ def main():
     for b in r6_blocks:
         r6_by_code.setdefault(b['item_code'], []).append(b)
 
+    # R6ブロックをitem_code+sub_itemでインデックス化（同一サブ項目内マッチ用）
+    r6_by_code_sub = {}
+    for b in r6_blocks:
+        cs_key = (b['item_code'], b.get('sub_item', ''))
+        r6_by_code_sub.setdefault(cs_key, []).append(b)
+
     matched_r6_ids = set()
     r6_id_to_idx = {id(b): i for i, b in enumerate(r6_blocks)}
     r6_idx_to_output_pos = {}
@@ -810,13 +816,15 @@ def main():
                            key=lambda c: text_similarity(r8b['text'], c['text']))
                 r6_match = best
 
-        # 修正C: _from_splitブロック同士のマッチで類似度が低い場合は拒否
-        # 拒否時はフォールバックもスキップ（誤マッチ防止）
+        # 完全キーマッチ後の類似度チェック
+        # キーが同じでも内容が大きく異なる場合は拒否（番号ずれ対策）
+        # 閾値0.5: 定型文の「ロについては」「別に厚生労働大臣が定める」等で
+        # 類似度が0.3-0.5になる誤マッチを防止
         skip_fallback = False
-        if r6_match and r8b.get('_from_split') and r6_match.get('_from_split'):
-            if text_similarity(r8b['text'], r6_match['text']) < 0.3:
+        if r6_match:
+            sim = text_similarity(r8b['text'], r6_match['text'])
+            if sim < 0.5:
                 r6_match = None
-                skip_fallback = True
 
         # フォールバック1: 短いキーでマッチ（類似度で選択）
         if r6_match is None and not skip_fallback:
@@ -830,8 +838,22 @@ def main():
                     if text_similarity(r8b['text'], best['text']) > 0.2:
                         r6_match = best
 
-        # フォールバック2: item_codeのみでマッチ（注番号ズレ対策）
-        # サブアイテム分割ブロックで注番号がR8/R6間で変わった場合に対応
+        # フォールバック2: item_code+sub_itemでマッチ（注番号ズレ対策）
+        # 同一サブ項目内でテキスト類似度が高い候補を探す
+        if r6_match is None and not skip_fallback:
+            cs_key = (r8b['item_code'], r8b.get('sub_item', ''))
+            if cs_key in r6_by_code_sub and r8b['item_code'] != '通則':
+                candidates = [c for c in r6_by_code_sub[cs_key]
+                              if id(c) not in matched_r6_ids]
+                if candidates:
+                    best = max(candidates,
+                               key=lambda c: text_similarity(r8b['text'], c['text']))
+                    sim = text_similarity(r8b['text'], best['text'])
+                    if sim > 0.7:
+                        r6_match = best
+
+        # フォールバック3: item_codeのみでマッチ（sub_itemが異なる場合）
+        # より厳しい類似度閾値で誤マッチを防止
         if r6_match is None and not skip_fallback:
             code = r8b['item_code']
             if code in r6_by_code and code != '通則':
@@ -841,7 +863,7 @@ def main():
                     best = max(candidates,
                                key=lambda c: text_similarity(r8b['text'], c['text']))
                     sim = text_similarity(r8b['text'], best['text'])
-                    if sim > 0.5:
+                    if sim > 0.7:
                         r6_match = best
 
         if r6_match:

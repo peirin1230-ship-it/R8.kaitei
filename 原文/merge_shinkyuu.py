@@ -396,21 +396,18 @@ def fill_missing_sections(kokuji_rows, tsuchi_rows):
 
 
 def extract_group_key(row):
-    """行から (部, 区分番号) のグループキーを抽出する。
+    """行から (部, 項目コード全体) のグループキーを抽出する。
 
-    例: 部="第１部 初・再診料", 項目コード="Ａ０００ 初診料" → ("第１部 初・再診料", "Ａ０００")
-        部="第２部 入院料等", 項目コード="通則" → ("第２部 入院料等", "通則")
+    項目コードフィールド全体をキーに使用し、サブ項目単位で
+    告示→通知をインターリーブさせる。
+    例: "Ａ０００ 初診料" → ("第１部 初・再診料", "Ａ０００ 初診料")
+        "Ｂ００１ 特定疾患治療管理料 ７ 難病外来指導管理料"
+          → ("第２部 在宅医療", "Ｂ００１ 特定疾患治療管理料 ７ 難病外来指導管理料")
     """
     bu = row[1].get('text', '') if len(row) > 1 else ''
     code_field = row[4].get('text', '') if len(row) > 4 else ''
 
-    # "Ａ０００ 初診料" → "Ａ０００"（スペースで区切って先頭のコード部分のみ）
-    # "通則" → "通則"（そのまま）
-    code = code_field.split(' ')[0].split('\u3000')[0]
-    if not code:
-        code = code_field
-
-    return (bu, code)
+    return (bu, code_field)
 
 
 def group_rows_by_key(rows):
