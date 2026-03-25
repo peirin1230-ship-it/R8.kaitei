@@ -5,9 +5,10 @@
   - 括弧付き数字: （１）（２）... / (1)(2)...
   - カタカナ1文字: ア イ ウ ... （五十音・いろは両方）
   - 全角小文字アルファベット: ａ ｂ ｃ ...
+  - 裸の数字: １ ２ ３ ... / 1 2 3 ...（注の継続番号等）
 
 除外:
-  - 注番号（注１ 注２ 等）は構造ラベルのため対象外
+  - 「注N」形式（注１ 注２ 等）は構造ラベルのため対象外
 """
 
 import re
@@ -20,18 +21,29 @@ RE_MARKER_KANA = re.compile(
     r'ナニヌネノハヒフヘホマミムメモヤユヨ'
     r'ラリルレロワヲン])[\s\u3000]')
 RE_MARKER_ALPHA = re.compile(r'^([ａ-ｚ])[\s\u3000]')
+# 裸の数字（「注N」は除外。数字+空白+日本語テキストのパターンのみ対象）
+RE_MARKER_BARE_NUM = re.compile(r'^([０-９0-9]+)[\s\u3000]')
+# 「注N」パターン（除外判定用）
+RE_NOTE_PREFIX = re.compile(r'^注[０-９0-9]')
 
-_MARKER_PATTERNS = [RE_MARKER_PAREN_FULL, RE_MARKER_KANA, RE_MARKER_ALPHA]
+_MARKER_PATTERNS = [RE_MARKER_PAREN_FULL, RE_MARKER_KANA, RE_MARKER_ALPHA,
+                    RE_MARKER_BARE_NUM]
 
 
 def strip_sequence_marker(text):
     """行頭の順番ラベル（マーカー）を分離する。
+
+    「注N」形式（注１ 注２ 等）は構造ラベルのため対象外とする。
 
     Returns:
         (marker, body): マーカー文字列と残りの本文。
                         マーカーがない場合は ('', text)。
     """
     if not text:
+        return '', text
+
+    # 「注N」形式は除外
+    if RE_NOTE_PREFIX.match(text):
         return '', text
 
     for pattern in _MARKER_PATTERNS:
