@@ -16,7 +16,7 @@ import xlsxwriter
 
 # marker_utils は親ディレクトリにあるため、パスを追加
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from marker_utils import strip_sequence_marker
+from marker_utils import strip_sequence_marker, normalize_width
 
 sys.stdout.reconfigure(encoding='utf-8')
 sys.stderr.reconfigure(encoding='utf-8')
@@ -550,10 +550,13 @@ def make_block_key_short(block):
 # ============================================================
 
 def normalize_text_for_compare(text):
-    """比較用にテキストを正規化する。"""
-    t = re.sub(r'\s+', ' ', text).strip()
-    t = t.replace('\u3000', ' ')
-    t = re.sub(r' +', ' ', t)
+    """比較用にテキストを正規化する。
+    全角半角の違い、空白・改行の違いを吸収する。
+    """
+    # 全角英数字・記号・スペースを半角に統一（NFKC正規化）
+    t = normalize_width(text)
+    # 全ての空白文字（改行含む）を半角スペースに統一し、連続を1つに
+    t = re.sub(r'\s+', ' ', t).strip()
     return t
 
 

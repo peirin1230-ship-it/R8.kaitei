@@ -1,4 +1,5 @@
-"""順番ラベル（マーカー）の検出・フィルタリングユーティリティ。
+"""順番ラベル（マーカー）の検出・フィルタリング、および
+テキスト正規化のユーティリティ。
 
 対象マーカー:
   - 括弧付き数字: （１）（２）... / (1)(2)...
@@ -10,6 +11,7 @@
 """
 
 import re
+import unicodedata
 
 # 順番ラベルのパターン
 RE_MARKER_PAREN_FULL = re.compile(r'^([（(][０-９0-9]+[）)])\s*')
@@ -63,3 +65,16 @@ def is_marker_only_change(r8_text, r6_text, normalize_fn):
             return True, r8_marker, r6_marker, r8_body, r6_body
 
     return False, r8_marker, r6_marker, r8_body, r6_body
+
+
+# ============================================================
+# 全角半角正規化
+# ============================================================
+
+def normalize_width(text):
+    """全角英数字・記号を半角に、全角スペースを半角スペースに変換する。
+
+    unicodedata.normalize('NFKC') を使用して全角→半角を統一する。
+    カタカナ・ひらがな・漢字等の日本語文字はそのまま保持される。
+    """
+    return unicodedata.normalize('NFKC', text)
