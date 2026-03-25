@@ -16,7 +16,7 @@ import xlsxwriter
 
 # marker_utils は親ディレクトリにあるため、パスを追加
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from marker_utils import strip_sequence_marker, normalize_width
+from marker_utils import strip_sequence_marker, normalize_width, normalize_for_content_compare
 
 sys.stdout.reconfigure(encoding='utf-8')
 sys.stderr.reconfigure(encoding='utf-8')
@@ -574,6 +574,11 @@ def compute_diff_segments(r8_text, r6_text):
     r6_norm = normalize_text_for_compare(r6_text)
 
     if r8_norm == r6_norm:
+        return None, None
+
+    # 先頭マーカー・文中注番号参照の変更のみなら同一扱い
+    if normalize_for_content_compare(r8_text, normalize_text_for_compare) == \
+       normalize_for_content_compare(r6_text, normalize_text_for_compare):
         return None, None
 
     # スペースを除去した全文が同一なら改行位置の違いのみ（同一扱い）
