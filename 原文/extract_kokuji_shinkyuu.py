@@ -553,11 +553,11 @@ def make_block_key(block):
 
 
 def make_block_key_short(block):
-    """フォールバック用の短いキー"""
+    """フォールバック用の短いキー（sub_item含む）"""
     note = block['note']
     if block['item_code'] == '通則':
         note = ''
-    return (block['item_code'], note)
+    return (block['item_code'], block.get('sub_item', ''), note)
 
 
 # ============================================================
