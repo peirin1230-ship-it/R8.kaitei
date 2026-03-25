@@ -14,6 +14,10 @@ import os
 import difflib
 import xlsxwriter
 
+# marker_utils は親ディレクトリにあるため、パスを追加
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+from marker_utils import strip_sequence_marker
+
 sys.stdout.reconfigure(encoding='utf-8')
 sys.stderr.reconfigure(encoding='utf-8')
 
@@ -849,6 +853,20 @@ def main():
             r6_segments = [("（新設）", False)]
         else:
             r8_segments, r6_segments = compute_diff_segments(r8_text, r6_text)
+
+            # --- マーカー変更フィルタリング ---
+            if r8_segments is not None:
+                r8_marker, r8_body = strip_sequence_marker(r8_text)
+                r6_marker, r6_body = strip_sequence_marker(r6_text)
+                if r8_marker and r6_marker and r8_marker != r6_marker:
+                    body_r8_segs, body_r6_segs = compute_diff_segments(
+                        r8_body, r6_body)
+                    if body_r8_segs is None:
+                        r8_segments = None
+                        r6_segments = None
+                    else:
+                        r8_segments = [(r8_marker + ' ', False)] + body_r8_segs
+                        r6_segments = [(r6_marker + ' ', False)] + body_r6_segs
 
         if r8_segments is None:
             if r6_match:

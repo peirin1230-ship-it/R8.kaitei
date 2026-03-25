@@ -13,6 +13,7 @@ import sys
 import os
 import copy
 import xlsxwriter
+from marker_utils import strip_sequence_marker
 
 sys.stdout.reconfigure(encoding='utf-8')
 sys.stderr.reconfigure(encoding='utf-8')
@@ -965,6 +966,66 @@ def main():
                 markers = [segs for segs in lines_list
                            if _segments_text(segs) in ('（新設）', '（削る）')]
                 row[side_key] = markers
+
+    # ============================================================
+    # 順番ラベル変更のフィルタリング
+    # ============================================================
+    # マーカー（アイウエオ、(1)(2)(3)、ａｂｃ等）の変更のみで
+    # 内容が同じブロックを除外する。マーカー＋内容変更の場合は
+    # マーカー部分のアンダーラインのみ除去する。
+    def _strip_marker_ul_from_segments(segments):
+        """セグメントリスト先頭のマーカー部分のULフラグをFalseにする。
+
+        Returns: (new_segments, marker_text)
+        """
+        if not segments:
+            return segments, ''
+        first_text, first_ul = segments[0]
+        marker, body = strip_sequence_marker(first_text)
+        if not marker or not first_ul:
+            return segments, ''
+        # マーカー部分はULなし、本文部分は元のUL維持
+        new_segs = [(marker + (' ' if body else ''), False)]
+        if body:
+            new_segs.append((body, first_ul))
+        new_segs.extend(segments[1:])
+        return new_segs, marker
+
+    filtered_rows = []
+    for row in all_rows:
+        left_lines = row['left_lines']
+        right_lines = row['right_lines']
+        if not left_lines or not right_lines:
+            filtered_rows.append(row)
+            continue
+
+        new_left_first, l_marker = _strip_marker_ul_from_segments(left_lines[0])
+        new_right_first, r_marker = _strip_marker_ul_from_segments(right_lines[0])
+
+        if l_marker and r_marker and l_marker != r_marker:
+            # マーカー部分のULを除去
+            row['left_lines'] = [new_left_first] + left_lines[1:]
+            row['right_lines'] = [new_right_first] + right_lines[1:]
+
+            # マーカー以外にULが残るかチェック
+            has_other_ul = False
+            for line_segs in row['left_lines'] + row['right_lines']:
+                for text, is_ul in line_segs:
+                    if is_ul and text.strip():
+                        has_other_ul = True
+                        break
+                if has_other_ul:
+                    break
+
+            if not has_other_ul:
+                continue  # マーカーのみの変更 → 除外
+
+        filtered_rows.append(row)
+
+    removed_count = len(all_rows) - len(filtered_rows)
+    if removed_count > 0:
+        print(f"マーカーのみ変更ブロックを除外: {removed_count}件", file=sys.stderr)
+    all_rows = filtered_rows
 
     # ============================================================
     # XLSX 出力（xlsxwriter でアンダーライン付きリッチテキスト）
