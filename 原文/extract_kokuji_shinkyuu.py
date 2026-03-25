@@ -826,6 +826,24 @@ def main():
         cs_key = (b['item_code'], b.get('sub_item', ''))
         r6_by_code_sub.setdefault(cs_key, []).append(b)
 
+    # R6ブロックを注の親部分でインデックス化（番号ずれ対策）
+    # 例: "注10　ヤ" → 親キー (item_code, sub_item, "注10")
+    def _note_parent(note):
+        """注フィールドからイロハ/カナ等のサブマーカーを除去して親部分を返す。"""
+        if not note:
+            return note
+        # "注10　ヤ" → "注10", "注５　(1)" → "注５" 等
+        m = re.match(r'^(注[０-９0-9]*)', note)
+        if m:
+            return m.group(1)
+        return note
+
+    r6_by_note_parent = {}
+    for b in r6_blocks:
+        parent = _note_parent(b['note'])
+        np_key = (b['item_code'], b.get('sub_item', ''), parent)
+        r6_by_note_parent.setdefault(np_key, []).append(b)
+
     for r8b in r8_blocks:
         key = make_block_key(r8b)
         r6_match = None
@@ -836,22 +854,34 @@ def main():
             if len(candidates) == 1:
                 r6_match = candidates[0]
             elif len(candidates) > 1:
-                # テキスト類似度が最も高いものを選択
                 best = max(candidates,
                            key=lambda c: text_similarity(r8b['text'], c['text']))
                 r6_match = best
 
         # 完全キーマッチ後の類似度チェック
         # キーが同じでも内容が大きく異なる場合は拒否（番号ずれ対策）
-        # 閾値0.5: 定型文の「ロについては」「別に厚生労働大臣が定める」等で
-        # 類似度が0.3-0.5になる誤マッチを防止
         skip_fallback = False
         if r6_match:
             sim = text_similarity(r8b['text'], r6_match['text'])
             if sim < 0.5:
                 r6_match = None
 
-        # フォールバック1: 短いキーでマッチ（類似度で選択）
+        # フォールバック1: 同じ親注内で内容ベースマッチング（番号ずれ対策）
+        # 例: 注10のイロハが入れ替わった場合、同じ注10内で最も類似する候補を探す
+        if r6_match is None and not skip_fallback:
+            parent = _note_parent(r8b['note'])
+            np_key = (r8b['item_code'], r8b.get('sub_item', ''), parent)
+            if np_key in r6_by_note_parent:
+                candidates = [c for c in r6_by_note_parent[np_key]
+                              if id(c) not in matched_r6_ids]
+                if candidates:
+                    best = max(candidates,
+                               key=lambda c: text_similarity(r8b['text'], c['text']))
+                    sim = text_similarity(r8b['text'], best['text'])
+                    if sim > 0.5:
+                        r6_match = best
+
+        # フォールバック2: 短いキーでマッチ（類似度で選択）
         if r6_match is None and not skip_fallback:
             short_key = make_block_key_short(r8b)
             if short_key in r6_by_short_key:
@@ -860,12 +890,10 @@ def main():
                 if candidates:
                     best = max(candidates,
                                key=lambda c: text_similarity(r8b['text'], c['text']))
-                    # 類似度が最低限あるものだけマッチ
-                    if text_similarity(r8b['text'], best['text']) > 0.2:
+                    if text_similarity(r8b['text'], best['text']) > 0.3:
                         r6_match = best
 
-        # フォールバック2: item_code+sub_itemでマッチ（注番号ズレ対策）
-        # 同一サブ項目内でテキスト類似度が高い候補を探す
+        # フォールバック3: item_code+sub_itemでマッチ（注番号ズレ対策）
         if r6_match is None and not skip_fallback:
             cs_key = (r8b['item_code'], r8b.get('sub_item', ''))
             if cs_key in r6_by_code_sub and r8b['item_code'] != '通則':
@@ -875,10 +903,10 @@ def main():
                     best = max(candidates,
                                key=lambda c: text_similarity(r8b['text'], c['text']))
                     sim = text_similarity(r8b['text'], best['text'])
-                    if sim > 0.7:
+                    if sim > 0.5:
                         r6_match = best
 
-        # フォールバック3: item_codeのみでマッチ（sub_itemが異なる場合）
+        # フォールバック4: item_codeのみでマッチ（sub_itemが異なる場合）
         # より厳しい類似度閾値で誤マッチを防止
         if r6_match is None and not skip_fallback:
             code = r8b['item_code']
