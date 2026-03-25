@@ -529,12 +529,15 @@ def extract_blocks_from_pdf(pdf_path, toc_pages):
 
 
 def make_block_key(block):
-    """ブロックのマッチングキーを生成。"""
+    """ブロックのマッチングキーを生成。
+    sub_itemを含めて、同一item_code内の異なるサブ項目を区別する。
+    """
     note = block['note']
     if block['item_code'] == '通則':
         note = ''
     return (block['chapter'], block['part'], block['section'],
-            block['subsection'], block['item_code'], note)
+            block['subsection'], block['item_code'],
+            block.get('sub_item', ''), note)
 
 
 def make_block_key_short(block):
