@@ -11,14 +11,30 @@ Always respond in Japanese.
 
 **令和8年度（R8）診療報酬改定**の公式PDF資料と、そこから新旧対照表を抽出するPythonスクリプトを格納するリポジトリ。
 
+## ディレクトリ構造
+
+```
+R8.kaitei/
+├── scripts/                # 全Pythonスクリプト
+│   ├── extract_shinkyuu.py
+│   ├── marker_utils.py
+│   ├── generate_receipt_comment_list.py
+│   └── 原文/               # 原文系スクリプト群
+├── 原文/                   # 公式PDF・Excelの原本（編集不可）
+├── 令和6年度診療報酬/原本/  # R6比較用原本
+├── DPC/                    # DPC関連データ
+├── output/                 # 全成果物（生成Excel）
+└── 総－２別紙１－１医科診療報酬点数表.pdf
+```
+
 ## スクリプト実行
 
 ```bash
-python extract_shinkyuu.py
+python scripts/extract_shinkyuu.py
 ```
 
 - 入力: `総－２別紙１－１医科診療報酬点数表.pdf`（948ページ、中医協公開の原本）
-- 出力: `R8年度診療報酬改定_新旧対照表.xlsx`（約3000件の変更ブロック、アンダーライン付き）
+- 出力: `output/R8年度診療報酬改定_新旧対照表.xlsx`（約3000件の変更ブロック、アンダーライン付き）
 - 実行時間: 数分（全948ページを走査）
 - 依存ライブラリ: `PyMuPDF (fitz)`, `xlsxwriter`
 

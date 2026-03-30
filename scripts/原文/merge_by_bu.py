@@ -12,15 +12,16 @@ import os
 import fitz  # PyMuPDF
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-OUTPUT_DIR = os.path.join(BASE_DIR, "分割", "部別_告示通知統合")
+REPO_ROOT = os.path.join(BASE_DIR, "..", "..")
+OUTPUT_DIR = os.path.join(REPO_ROOT, "原文", "分割", "部別_告示通知統合")
 
 # 入力PDFファイル
 PDF_KOKUJI = os.path.join(
-    BASE_DIR,
+    REPO_ROOT, "原文",
     "診療報酬の算定方法の一部を改正する件（令和８年厚生労働省告示第69号）医科点数表.pdf",
 )
 PDF_TSUCHI = os.path.join(
-    BASE_DIR,
+    REPO_ROOT, "原文",
     "診療報酬の算定方法の一部改正に伴う実施上の留意事項について（通知）（令和８年３月５日保医発0305第６号）医科診療報酬点数表.pdf",
 )
 

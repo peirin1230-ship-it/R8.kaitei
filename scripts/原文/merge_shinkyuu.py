@@ -21,11 +21,12 @@ sys.stdout.reconfigure(encoding='utf-8')
 sys.stderr.reconfigure(encoding='utf-8')
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-KOKUJI_XLSX = os.path.join(SCRIPT_DIR, "output",
+REPO_ROOT = os.path.join(SCRIPT_DIR, "..", "..")
+KOKUJI_XLSX = os.path.join(REPO_ROOT, "output",
     "R8年度医科点数表(告示)_新旧対照表.xlsx")
-TSUCHI_XLSX = os.path.join(SCRIPT_DIR, "output",
+TSUCHI_XLSX = os.path.join(REPO_ROOT, "output",
     "R8年度医科点数表(通知)_新旧対照表.xlsx")
-OUTPUT_XLSX = os.path.join(SCRIPT_DIR, "output",
+OUTPUT_XLSX = os.path.join(REPO_ROOT, "output",
     "R8年度医科点数表_新旧対照表_統合.xlsx")
 
 # Excel XML名前空間

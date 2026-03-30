@@ -25,11 +25,12 @@ sys.stderr.reconfigure(encoding='utf-8')
 # 定数
 # ============================================================
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-R8_PDF_PATH = os.path.join(SCRIPT_DIR,
+REPO_ROOT = os.path.join(SCRIPT_DIR, "..", "..")
+R8_PDF_PATH = os.path.join(REPO_ROOT, "原文",
     "診療報酬の算定方法の一部を改正する件（令和８年厚生労働省告示第69号）医科点数表.pdf")
-R6_PDF_PATH = os.path.join(SCRIPT_DIR, "..", "令和6年度診療報酬", "原本",
+R6_PDF_PATH = os.path.join(REPO_ROOT, "令和6年度診療報酬", "原本",
     "診療報酬の算定方法の一部を改正する告示 令和６年 厚生労働省告示第57号 別表第一 （医科点数表）.pdf")
-OUTPUT_XLSX = os.path.join(SCRIPT_DIR, "output",
+OUTPUT_XLSX = os.path.join(REPO_ROOT, "output",
     "R8年度医科点数表(告示)_新旧対照表.xlsx")
 
 MIN_FONT_SIZE = 5.0

@@ -8,9 +8,11 @@
 import openpyxl
 import xlsxwriter
 import sys
+import os
 
-INPUT_FILE = '原文/別表Ⅳ 診療報酬明細書の「摘要」欄への記載事項等一覧（材料価格基準）.xlsx'
-OUTPUT_FILE = '特定保険医療材料_レセプトコメント一覧（別表Ⅱ）.xlsx'
+REPO_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
+INPUT_FILE = os.path.join(REPO_ROOT, '原文', '別表Ⅳ 診療報酬明細書の「摘要」欄への記載事項等一覧（材料価格基準）.xlsx')
+OUTPUT_FILE = os.path.join(REPO_ROOT, 'output', '特定保険医療材料_レセプトコメント一覧（別表Ⅱ）.xlsx')
 
 
 def extract_betsu2_data(input_file):

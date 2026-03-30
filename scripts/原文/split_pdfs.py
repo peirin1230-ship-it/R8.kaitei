@@ -15,7 +15,9 @@ import fitz  # PyMuPDF
 # 設定: 入力ファイル名と出力フォルダ
 # ---------------------------------------------------------------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-OUTPUT_ROOT = os.path.join(BASE_DIR, "分割")
+REPO_ROOT = os.path.join(BASE_DIR, "..", "..")
+GENMON_DIR = os.path.join(REPO_ROOT, "原文")
+OUTPUT_ROOT = os.path.join(GENMON_DIR, "分割")
 
 # 入力PDFファイル名
 PDF_69 = "診療報酬の算定方法の一部を改正する件（令和８年厚生労働省告示第69号）医科点数表.pdf"
@@ -167,7 +169,7 @@ def main():
     ]
 
     for pdf_name, splits, folder_name in tasks:
-        src_path = os.path.join(BASE_DIR, pdf_name)
+        src_path = os.path.join(GENMON_DIR, pdf_name)
         out_dir = os.path.join(OUTPUT_ROOT, folder_name)
 
         print(f"\n--- {folder_name} ({len(splits)}分割) ---")

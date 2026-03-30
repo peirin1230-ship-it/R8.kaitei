@@ -21,10 +21,9 @@ sys.stderr.reconfigure(encoding='utf-8')
 # ============================================================
 # 定数
 # ============================================================
-PDF_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                        "総－２別紙１－１医科診療報酬点数表.pdf")
-OUTPUT_XLSX = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                           "R8年度診療報酬改定_新旧対照表.xlsx")
+REPO_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+PDF_PATH = os.path.join(REPO_ROOT, "総－２別紙１－１医科診療報酬点数表.pdf")
+OUTPUT_XLSX = os.path.join(REPO_ROOT, "output", "R8年度診療報酬改定_新旧対照表.xlsx")
 
 LEFT_X_MAX = 420.0        # 左カラム（改正後）の右端 x
 UL_HEIGHT_MAX = 2.0       # アンダーライン矩形の最大高さ

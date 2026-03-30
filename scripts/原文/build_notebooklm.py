@@ -14,21 +14,23 @@ import shutil
 import fitz  # PyMuPDF
 
 BASE = os.path.dirname(os.path.abspath(__file__))
-NB_BASE = os.path.join(BASE, "NotebookLM")
+REPO_ROOT = os.path.join(BASE, "..", "..")
+GENMON_DIR = os.path.join(REPO_ROOT, "原文")
+NB_BASE = os.path.join(GENMON_DIR, "NotebookLM")
 MAX_PAGES = 50
 
 # ───────────────────────────────────────────
 # NB1: 点数表（告示+通知統合）
 # ───────────────────────────────────────────
-NB1_SRC = os.path.join(BASE, "分割", "医科診療報酬点数表_告示通知統合")
+NB1_SRC = os.path.join(GENMON_DIR, "分割", "医科診療報酬点数表_告示通知統合")
 NB1_DST = os.path.join(NB_BASE, "NB1_点数表")
 
 # ───────────────────────────────────────────
 # NB2: 施設基準（第7号+第8号）
 #   除外: 届出書、歯科4、調剤1
 # ───────────────────────────────────────────
-NB2_SRC_7 = os.path.join(BASE, "分割", "第7号_基本診療料施設基準")
-NB2_SRC_8 = os.path.join(BASE, "分割", "第8号_特掲診療料施設基準")
+NB2_SRC_7 = os.path.join(GENMON_DIR, "分割", "第7号_基本診療料施設基準")
+NB2_SRC_8 = os.path.join(GENMON_DIR, "分割", "第8号_特掲診療料施設基準")
 NB2_DST = os.path.join(NB_BASE, "NB2_施設基準")
 
 # NB2 除外キーワード

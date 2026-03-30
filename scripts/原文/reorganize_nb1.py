@@ -15,8 +15,10 @@ import os
 import shutil
 
 BASE = os.path.dirname(os.path.abspath(__file__))
-SRC = os.path.join(BASE, "NotebookLM", "NB1_点数表_告示通知統合")
-NB_BASE = os.path.join(BASE, "NotebookLM")
+REPO_ROOT = os.path.join(BASE, "..", "..")
+GENMON_DIR = os.path.join(REPO_ROOT, "原文")
+SRC = os.path.join(GENMON_DIR, "NotebookLM", "NB1_点数表_告示通知統合")
+NB_BASE = os.path.join(GENMON_DIR, "NotebookLM")
 
 # 分割定義: フォルダ名 → ファイル名に含まれるキーワードのリスト
 NOTEBOOKS = {

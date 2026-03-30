@@ -9,8 +9,10 @@ import os
 import fitz  # PyMuPDF
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-SRC_DIR = os.path.join(BASE_DIR, "分割", "医科診療報酬点数表_告示通知統合")
-NB1_DIR = os.path.join(BASE_DIR, "NotebookLM", "NB1_点数表_告示通知統合")
+REPO_ROOT = os.path.join(BASE_DIR, "..", "..")
+GENMON_DIR = os.path.join(REPO_ROOT, "原文")
+SRC_DIR = os.path.join(GENMON_DIR, "分割", "医科診療報酬点数表_告示通知統合")
+NB1_DIR = os.path.join(GENMON_DIR, "NotebookLM", "NB1_点数表_告示通知統合")
 
 # 分割対象: (元ファイル名, 告示ページ数)
 # merge_by_bu.py の MERGES 定義から算出

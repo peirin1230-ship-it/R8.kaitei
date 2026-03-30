@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """
-施設基準 通知PDF 新旧対照表 抽出スクリプト
+DPC通知PDF新旧対照表 抽出スクリプト
 
-R8通知PDFとR6通知PDFを比較し、difflib で文字レベルの差分を検出して
-XLSX 形式の新旧対照表を生成する。差分部分にはアンダーライン書式を適用する。
-
-基本診療料・特掲診療料の両方を処理する。
+R8 DPC通知PDF（令和８年保医発0318第４号）とR6 DPC通知PDF（令和６年保医発0321第６号）を比較し、
+difflib で文字レベルの差分を検出して XLSX 形式の新旧対照表を生成する。
+差分部分にはアンダーライン書式を適用する。
 """
 
 import fitz  # PyMuPDF
@@ -22,66 +21,45 @@ sys.stderr.reconfigure(encoding='utf-8')
 # 定数
 # ============================================================
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-
-CONFIGS = [
-    {
-        'label': '基本診療料',
-        'r8_pdf': os.path.join(SCRIPT_DIR,
-            "基本診療料の施設基準等及びその届出に関する手続きの取扱いについて（令和８年３月５日保医発0305第７号）.pdf"),
-        'r6_pdf': os.path.join(SCRIPT_DIR,
-            "基本診療料の施設基準等及びその届出に関する手続きの取扱いについて（通知）令和６年３月５日 保医発0305第５号.pdf"),
-        'output': os.path.join(SCRIPT_DIR, "output",
-            "R8年度施設基準(基本・通知)_新旧対照表.xlsx"),
-    },
-    {
-        'label': '特掲診療料',
-        'r8_pdf': os.path.join(SCRIPT_DIR,
-            "特掲診療料の施設基準等及びその届出に関する手続きの取扱いについて（令和８年３月５日保医発0305第８号）.pdf"),
-        'r6_pdf': os.path.join(SCRIPT_DIR,
-            "特掲診療料の施設基準等及びその届出に関する手続きの取扱いについて（通知）令和６年３月５日 保医発0305第６号.pdf"),
-        'output': os.path.join(SCRIPT_DIR, "output",
-            "R8年度施設基準(特掲・通知)_新旧対照表.xlsx"),
-    },
-]
+REPO_ROOT = os.path.join(SCRIPT_DIR, "..", "..")
+R8_PDF_PATH = os.path.join(REPO_ROOT, "原文",
+    "厚生労働大臣が指定する病院の病棟における療養に要する費用の額の算定方法の一部改正等に伴う実施上の留意事項について（通知）（令和８年３月18日保医発0318第４号）.pdf")
+R6_PDF_PATH = os.path.join(REPO_ROOT, "原文",
+    "厚生労働大臣が指定する病院の病棟における療養に要する費用の額の算定方法の一部改正等に伴う実施上の留意事項について（通知）令和６年３月21日.pdf")
+OUTPUT_XLSX = os.path.join(REPO_ROOT, "output",
+    "R8年度DPC通知_新旧対照表.xlsx")
 
 MIN_FONT_SIZE = 5.0
 RUBY_MAX_SIZE = 6.0
 Y_GROUP_TOLERANCE = 3.0
 
+R8_TOC_PAGES = 0
+R6_TOC_PAGES = 0
+
+# x座標の閾値（DPC通知PDF固有）
+# 56.6: 左マージン（第N、本文継続）
+# 67.2: 項番（１, ２, ３）
+# 77.7: サブ項番 (１),(２)
+# 98.7: カナ（ア, イ, ウ）
+ITEM_NUM_MAX_X = 72.0    # 項番の最大x座標
+SUB_ITEM_MAX_X = 82.0    # サブ項番の最大x座標
+SECTION_MAX_X = 62.0     # セクション（第N）の最大x座標
+
 # ============================================================
-# 正規表現パターン
+# 正規表現パターン（DPC通知用）
 # ============================================================
-# ページ番号パターン（- 1 - 形式）
-RE_PAGE_NUM = re.compile(
-    r'^[\-\u2015\u2014\u2013－]?\s*\d{1,4}\s*[\-\u2015\u2014\u2013－]?$')
+RE_DPC_SECTION = re.compile(r'^第([１２３４５６７８９０\d]+)\s+(.*)')
+RE_DPC_ITEM_NUM = re.compile(r'^([１２３４５６７８９０\d]+)\s')
+RE_DPC_SUB_ITEM = re.compile(r'^[（(]([１２３４５６７８９０\d]+)[）)]\s')
+RE_KANA_ITEM = re.compile(r'^([アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン])\s')
+RE_CIRCLED_NUM = re.compile(r'^([①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳])\s')
+RE_PAGE_NUM = re.compile(r'^[\-\u2015\u2014\u2013－]?\s*\d{1,4}\s*[\-\u2015\u2014\u2013－]?$')
+RE_HEADING_ONLY = re.compile(r'^(第[１２３４５６７８９０\d]+\s+.+|記)$')
 
-# 別添パターン
-RE_BETTEN = re.compile(r'^別添\s*([１２３４５６７８９0-9]+(?:の[１２３４５６７８９0-9]+)?)\s*$')
-
-# 第N / 第NのM パターン（セクション見出し）
-# ※「第57号」等の告示番号を誤検出しないよう、数字は3桁以内に制限
-RE_SECTION = re.compile(
-    r'^第\s*([１２３４５６７８９０0-9]{1,3}(?:\s*の\s*[１２３４５６７８９０0-9]{1,3})*)\s+(.+)')
-
-# 番号付き項目（1, 2, 3, ... や１, ２, ３, ...）
-RE_NUMBERED_ITEM = re.compile(r'^([１２３４５６７８９０0-9]+)\s')
-# 番号直後が法令参照・日付の継続の場合は項番ではない
-# 例: "23 年政令..." "69 号）..." "18 対１..." "31 日まで..."
-RE_FALSE_ITEM_AFTER = re.compile(
-    r'^(号|条|項|対[１２３４５６７８９０0-9]|月[１２３４５６７８９０0-9末]'
-    r'|年[^間度以]|日[^本常間])')
-
-# 見出しのみの行
-RE_HEADING_ONLY = re.compile(
-    r'^(別添\s*[１２３４５６７８９0-9]+(?:の[１２３４５６７８９0-9]+)?|'
-    r'第\s*[１２３４５６７８９０0-9]+(?:\s*の\s*[１２３４５６７８９０0-9]+)*\s+.*|'
-    r'削除\s*)$')
-
-# サブアイテム検出パターン
-RE_SUBITEM_PAREN = re.compile(r'^([（(][１２３４５６７８９０0-9]+[）)])[\s\u3000]')
+# サブアイテム検出パターン（split_blocks_at_subitems用）
+RE_SUBITEM_PAREN = re.compile(r'^([（(][０-９0-9]+[）)])[\s\u3000]')
 RE_SUBITEM_KANA = re.compile(
-    r'^([アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホ'
-    r'マミムメモヤユヨラリルレロワヲン])[\s\u3000]')
+    r'^([アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン])[\s\u3000]')
 RE_SUBITEM_ALPHA = re.compile(r'^([ａｂｃｄｅｆｇｈｉｊｋｌｍ])[\s\u3000]')
 
 
@@ -89,8 +67,8 @@ RE_SUBITEM_ALPHA = re.compile(r'^([ａｂｃｄｅｆｇｈｉｊｋｌｍ])[\s\
 # PDFテキスト抽出
 # ============================================================
 
-def extract_page_lines(page):
-    """横書き単一カラムPDFからテキスト行を抽出する。
+def extract_page_lines_single_column(page):
+    """単一カラムの通知PDFからテキスト行を抽出する。
 
     Returns:
         [(text, x0), ...] のリスト（y座標順）
@@ -105,8 +83,7 @@ def extract_page_lines(page):
             for span in line['spans']:
                 if span['size'] < MIN_FONT_SIZE:
                     continue
-                if span['size'] < RUBY_MAX_SIZE and re.match(
-                        r'^[ぁ-ん]+$', span['text'].strip()):
+                if span['size'] < RUBY_MAX_SIZE and re.match(r'^[ぁ-ん]+$', span['text'].strip()):
                     continue
                 text = span['text']
                 if not text.strip():
@@ -142,8 +119,7 @@ def extract_page_lines(page):
     for g in y_groups:
         sorted_spans = sorted(g['spans'], key=lambda s: s['x0'])
         text = ''.join(s['text'] for s in sorted_spans).strip()
-        text = text.replace('\u2015', '－').replace('\u2014', '－').replace(
-            '\u2013', '－')
+        text = text.replace('\u2015', '－').replace('\u2014', '－').replace('\u2013', '－')
         x0 = sorted_spans[0]['x0']
 
         if RE_PAGE_NUM.match(text):
@@ -157,65 +133,66 @@ def extract_page_lines(page):
 
 
 # ============================================================
-# 階層追跡（施設基準 通知PDF用）
+# 階層追跡（DPC通知用）
 # ============================================================
 
-class HierarchyTracker:
-    """別添/第N/番号 の階層を追跡する"""
+class DpcHierarchyTracker:
+    """第N/項番/サブ項番/カナ の階層を追跡する（DPC通知用）"""
 
     def __init__(self):
-        self.betten = ""         # 別添N
-        self.section = ""        # 第NのM
-        self.section_name = ""   # セクション名
-        self.item_num = ""       # 番号付き項目 (1, 2, ...)
-        self.last_item_x = 0
-        self.pre_betten = True   # 別添の前の部分（第1~第4等）
+        self.section = ""       # 第１, 第２, 第３, 第４
+        self.item_num = ""      # １, ２, ３
+        self.sub_item = ""      # (１), (２)
+        self.sub_sub = ""       # ア, イ, ①, ②
+        self.in_preamble = True  # 前文フラグ（第１が出現するまで）
 
     def update(self, text, x_pos):
         if not text:
             return False
 
-        # 別添パターン
-        m = RE_BETTEN.match(text)
-        if m:
-            self.betten = f"別添{m.group(1)}"
-            self.section = ""
-            self.section_name = ""
+        m = RE_DPC_SECTION.match(text)
+        if m and x_pos < SECTION_MAX_X:
+            self.section = f"第{m.group(1)} {m.group(2)}".strip()
             self.item_num = ""
-            self.pre_betten = False
+            self.sub_item = ""
+            self.sub_sub = ""
+            self.in_preamble = False
             return True
 
-        # 第Nパターン（セクション見出し）
-        # 「第57号」「第１項」等の法令参照を誤検出しないよう、
-        # タイトル部分が「号」「条」「項」で始まるものを除外
-        m = RE_SECTION.match(text)
-        if m and x_pos < 100:
-            sec_title = m.group(2).strip()
-            if not re.match(r'^[号条項）)]', sec_title):
-                sec_num = m.group(1).replace(' ', '')
-                self.section = f"第{sec_num}"
-                self.section_name = sec_title
-                self.item_num = ""
-                return True
+        if self.in_preamble:
+            return False
 
-        # 番号付き項目（法令参照・日付の継続は除外）
-        m = RE_NUMBERED_ITEM.match(text)
-        if m and x_pos < 100:
-            after = text[m.end():].strip()
-            if not RE_FALSE_ITEM_AFTER.match(after):
-                self.item_num = m.group(1)
-                self.last_item_x = x_pos
-                return True
+        m = RE_DPC_ITEM_NUM.match(text)
+        if m and x_pos < ITEM_NUM_MAX_X:
+            self.item_num = m.group(1)
+            self.sub_item = ""
+            self.sub_sub = ""
+            return True
+
+        m = RE_DPC_SUB_ITEM.match(text)
+        if m and x_pos < SUB_ITEM_MAX_X:
+            self.sub_item = f"({m.group(1)})"
+            self.sub_sub = ""
+            return True
+
+        m = RE_KANA_ITEM.match(text)
+        if m and x_pos > SUB_ITEM_MAX_X:
+            self.sub_sub = m.group(1)
+            return True
+
+        m = RE_CIRCLED_NUM.match(text)
+        if m:
+            self.sub_sub = m.group(1)
+            return True
 
         return False
 
     def snapshot(self):
         return {
-            'betten': self.betten,
             'section': self.section,
-            'section_name': self.section_name,
             'item_num': self.item_num,
-            'pre_betten': self.pre_betten,
+            'sub_item': self.sub_item,
+            'sub_sub': self.sub_sub,
         }
 
 
@@ -223,25 +200,19 @@ class HierarchyTracker:
 # ブロック分割
 # ============================================================
 
-def is_block_boundary(text, x0):
+def is_block_boundary(text, x0, tracker):
     """テキストが新しいブロック境界かを判定"""
-    if RE_BETTEN.match(text):
+    if RE_DPC_SECTION.match(text) and x0 < SECTION_MAX_X:
         return True
-    m = RE_SECTION.match(text)
-    if m and x0 < 100:
-        title = m.group(2).strip()
-        if not re.match(r'^[号条項）)]', title):
-            return True
-    m = RE_NUMBERED_ITEM.match(text)
-    if m and x0 < 100:
-        after = text[m.end():].strip()
-        if not RE_FALSE_ITEM_AFTER.match(after):
-            return True
+    if RE_DPC_ITEM_NUM.match(text) and x0 < ITEM_NUM_MAX_X:
+        return True
+    if RE_DPC_SUB_ITEM.match(text) and x0 < SUB_ITEM_MAX_X:
+        return True
     return False
 
 
 def is_heading_only_block(text):
-    """ブロックが見出しのみかを判定"""
+    """ブロックが見出しのみ（構造情報のみ）かを判定。"""
     lines = text.strip().split('\n')
     for line in lines:
         line = line.strip()
@@ -253,7 +224,10 @@ def is_heading_only_block(text):
 
 
 def split_blocks_at_subitems(blocks):
-    """ブロックをサブアイテム境界で分割する"""
+    """ブロックをサブアイテム（ア、イ、ウ等）の境界で分割する。
+
+    同一タイプのマーカーが2つ以上ある場合のみ分割する。
+    """
     result = []
     for block in blocks:
         sub_blocks = _split_single_block(block)
@@ -272,19 +246,23 @@ def split_blocks_at_subitems(blocks):
 
 
 def _split_single_block(block):
-    """単一ブロックをサブアイテム境界で分割する"""
+    """単一ブロックをサブアイテム境界で分割する。"""
     lines = block['text'].split('\n')
 
     markers = []
     for i, line in enumerate(lines):
         stripped = line.strip()
+        m = RE_SUBITEM_KANA.match(stripped)
+        if m:
+            markers.append((i, 'kana', m.group(1)))
+            continue
         m = RE_SUBITEM_PAREN.match(stripped)
         if m:
             markers.append((i, 'paren', m.group(1)))
             continue
-        m = RE_SUBITEM_KANA.match(stripped)
+        m = RE_CIRCLED_NUM.match(stripped)
         if m:
-            markers.append((i, 'kana', m.group(1)))
+            markers.append((i, 'circled', m.group(1)))
             continue
         m = RE_SUBITEM_ALPHA.match(stripped)
         if m:
@@ -311,7 +289,7 @@ def _split_single_block(block):
         return [block]
 
     result = []
-    note_base = block['item_num']
+    sub_sub_base = block.get('sub_sub', '')
 
     first_line = markers[0][0]
     if first_line > 0:
@@ -322,21 +300,25 @@ def _split_single_block(block):
     for idx, (start, mtype, marker) in enumerate(markers):
         end = markers[idx + 1][0] if idx + 1 < len(markers) else len(lines)
         sub_text = '\n'.join(lines[start:end])
-        sub_note = f"{note_base}\u3000{marker}" if note_base else marker
-        result.append({**block, 'text': sub_text, 'item_num': sub_note,
+        sub_sub = f"{sub_sub_base}\u3000{marker}" if sub_sub_base else marker
+        result.append({**block, 'text': sub_text, 'sub_sub': sub_sub,
                        '_from_split': True})
 
     return result
 
 
-def extract_blocks_from_pdf(pdf_path):
-    """通知PDFからテキストブロックを抽出する。"""
+def extract_blocks_from_pdf(pdf_path, toc_pages):
+    """DPC通知PDFからテキストブロックを抽出する。
+
+    Returns:
+        [{section, item_num, sub_item, sub_sub, text, page}, ...]
+    """
     print(f"  PDFを読み込み中: {os.path.basename(pdf_path)}", file=sys.stderr)
     doc = fitz.open(pdf_path)
     total_pages = doc.page_count
     print(f"  総ページ数: {total_pages}", file=sys.stderr)
 
-    tracker = HierarchyTracker()
+    tracker = DpcHierarchyTracker()
     blocks = []
     current_lines = []
     current_ctx = None
@@ -347,28 +329,27 @@ def extract_blocks_from_pdf(pdf_path):
         if current_lines and current_ctx:
             block_text = '\n'.join(current_lines)
             blocks.append({
-                'betten': current_ctx['betten'],
                 'section': current_ctx['section'],
-                'section_name': current_ctx['section_name'],
                 'item_num': current_ctx['item_num'],
+                'sub_item': current_ctx['sub_item'],
+                'sub_sub': current_ctx['sub_sub'],
                 'text': block_text,
                 'page': current_page,
             })
 
     for pg_idx in range(total_pages):
-        if (pg_idx + 1) % 100 == 0:
-            print(f"    処理中: {pg_idx+1}/{total_pages} ページ...",
-                  file=sys.stderr)
-
         page = doc[pg_idx]
         page_num = pg_idx + 1
+        is_toc = (pg_idx < toc_pages)
 
-        lines = extract_page_lines(page)
+        lines = extract_page_lines_single_column(page)
 
         for text, x0 in lines:
-            boundary = is_block_boundary(text, x0)
-
+            boundary = is_block_boundary(text, x0, tracker)
             tracker.update(text, x0)
+
+            if is_toc or tracker.in_preamble:
+                continue
 
             ctx = tracker.snapshot()
 
@@ -386,18 +367,15 @@ def extract_blocks_from_pdf(pdf_path):
     return blocks
 
 
-# ============================================================
-# マッチングキー
-# ============================================================
-
 def make_block_key(block):
-    """ブロックのマッチングキー"""
-    return (block['betten'], block['section'], block['item_num'])
+    """ブロックのマッチングキーを生成。"""
+    return (block['section'], block['item_num'], block['sub_item'],
+            block.get('sub_sub', ''))
 
 
 def make_block_key_short(block):
-    """フォールバック用短キー"""
-    return (block['section'], block['item_num'])
+    """フォールバック用の短いキー"""
+    return (block['item_num'], block['sub_item'])
 
 
 # ============================================================
@@ -405,7 +383,7 @@ def make_block_key_short(block):
 # ============================================================
 
 def normalize_text_for_compare(text):
-    """比較用にテキストを正規化する"""
+    """比較用にテキストを正規化する。"""
     t = re.sub(r'\s+', ' ', text).strip()
     t = t.replace('\u3000', ' ')
     t = re.sub(r' +', ' ', t)
@@ -413,16 +391,16 @@ def normalize_text_for_compare(text):
 
 
 def compute_diff_segments(r8_text, r6_text):
-    """2つのテキストの文字レベル差分をセグメントリストに変換する"""
+    """2つのテキストの文字レベル差分をセグメントリストに変換する。
+
+    Returns:
+        (r8_segments, r6_segments): 各セグメントは [(text, is_changed), ...]
+        テキストが同一の場合は (None, None) を返す。
+    """
     r8_norm = normalize_text_for_compare(r8_text)
     r6_norm = normalize_text_for_compare(r6_text)
 
     if r8_norm == r6_norm:
-        return None, None
-
-    # スペースを除去した全文が同一なら改行位置の違いのみ（同一扱い）
-    # 例: "改正後の 特掲" vs "改正後 の特掲" → スペース除去後は同一
-    if re.sub(r'\s', '', r8_norm) == re.sub(r'\s', '', r6_norm):
         return None, None
 
     sm = difflib.SequenceMatcher(None, r6_norm, r8_norm, autojunk=False)
@@ -434,84 +412,35 @@ def compute_diff_segments(r8_text, r6_text):
     r8_segments = []
     r6_segments = []
 
-    # opcodeを一括取得して文字シフトパターンを検出
-    opcodes = sm.get_opcodes()
-
-    for oi, (op, i1, i2, j1, j2) in enumerate(opcodes):
+    for op, i1, i2, j1, j2 in sm.get_opcodes():
         r6_part = r6_norm[i1:i2]
         r8_part = r8_norm[j1:j2]
         if op == 'equal':
             r8_segments.append((r8_part, False))
             r6_segments.append((r6_part, False))
         elif op == 'replace':
-            # スペースを全て除去して同一なら改行位置の違いのみ
-            if (not r6_part.strip() and not r8_part.strip()) or \
-               re.sub(r'\s', '', r6_part) == re.sub(r'\s', '', r8_part):
+            if not r6_part.strip() and not r8_part.strip():
                 r6_segments.append((r6_part, False))
                 r8_segments.append((r8_part, False))
             else:
-                # 大きなreplaceブロック内の改行差分を分離するため再分析
-                sub_sm = difflib.SequenceMatcher(
-                    None, r6_part, r8_part, autojunk=False)
-                for sub_op, si1, si2, sj1, sj2 in sub_sm.get_opcodes():
-                    sr6 = r6_part[si1:si2]
-                    sr8 = r8_part[sj1:sj2]
-                    if sub_op == 'equal':
-                        r6_segments.append((sr6, False))
-                        r8_segments.append((sr8, False))
-                    elif sub_op == 'replace':
-                        if re.sub(r'\s', '', sr6) == re.sub(r'\s', '', sr8):
-                            r6_segments.append((sr6, False))
-                            r8_segments.append((sr8, False))
-                        else:
-                            r6_segments.append((sr6, True))
-                            r8_segments.append((sr8, True))
-                    elif sub_op == 'insert':
-                        r8_segments.append((sr8,
-                                            bool(sr8.strip())))
-                    elif sub_op == 'delete':
-                        r6_segments.append((sr6,
-                                            bool(sr6.strip())))
+                r6_segments.append((r6_part, True))
+                r8_segments.append((r8_part, True))
         elif op == 'insert':
-            # 改行位置の違いによる文字シフトを検出:
-            # insert(X) + equal(' ') + delete(X) パターン
-            is_shift = False
-            if r8_part.strip() and len(r8_part.strip()) <= 2:
-                # 次のopcodeがequal(space)、その次がdelete(同じ文字)か確認
-                if oi + 2 < len(opcodes):
-                    next_op = opcodes[oi + 1]
-                    next2_op = opcodes[oi + 2]
-                    if (next_op[0] == 'equal' and
-                        r6_norm[next_op[1]:next_op[2]].strip() == '' and
-                        next2_op[0] == 'delete' and
-                        r6_norm[next2_op[1]:next2_op[2]] == r8_part):
-                        is_shift = True
-            r8_segments.append((r8_part, not is_shift and bool(r8_part.strip())))
+            if not r8_part.strip():
+                r8_segments.append((r8_part, False))
+            else:
+                r8_segments.append((r8_part, True))
         elif op == 'delete':
-            # delete(X) + equal(' ') + insert(X) パターン
-            is_shift = False
-            if r6_part.strip() and len(r6_part.strip()) <= 2:
-                if oi + 2 < len(opcodes):
-                    next_op = opcodes[oi + 1]
-                    next2_op = opcodes[oi + 2]
-                    if (next_op[0] == 'equal' and
-                        r8_norm[next_op[3]:next_op[4]].strip() == '' and
-                        next2_op[0] == 'insert' and
-                        r8_norm[next2_op[3]:next2_op[4]] == r6_part):
-                        is_shift = True
-            r6_segments.append((r6_part, not is_shift and bool(r6_part.strip())))
-
-    # 変更セグメントが1つもなければ同一テキスト扱い
-    r8_has_change = any(is_changed for _, is_changed in r8_segments)
-    r6_has_change = any(is_changed for _, is_changed in r6_segments)
-    if not r8_has_change and not r6_has_change:
-        return None, None
+            if not r6_part.strip():
+                r6_segments.append((r6_part, False))
+            else:
+                r6_segments.append((r6_part, True))
 
     return r8_segments, r6_segments
 
 
 def text_similarity(text1, text2):
-    """2つのテキストの類似度を返す"""
+    """2つのテキストの類似度を返す（0.0〜1.0）"""
     t1 = normalize_text_for_compare(text1)
     t2 = normalize_text_for_compare(text2)
     if not t1 and not t2:
@@ -526,7 +455,7 @@ def text_similarity(text1, text2):
 # ============================================================
 
 def write_rich_cell(ws, row_idx, col_idx, segments, normal_fmt, ul_fmt):
-    """セグメントリストからリッチテキストセルを書き込む"""
+    """セグメントリストからxlsxwriterのリッチテキストセルを書き込む。"""
     if not segments:
         ws.write_string(row_idx, col_idx, '', normal_fmt)
         return
@@ -558,29 +487,19 @@ def write_rich_cell(ws, row_idx, col_idx, segments, normal_fmt, ul_fmt):
 # メイン処理
 # ============================================================
 
-def process_pair(config):
-    """1組のPDFペアを処理して新旧対照表を生成する"""
-    label = config['label']
-    r8_pdf = config['r8_pdf']
-    r6_pdf = config['r6_pdf']
-    output_xlsx = config['output']
+def main():
+    print("=" * 60, file=sys.stderr)
+    print("DPC通知PDF新旧対照表 抽出開始", file=sys.stderr)
+    print("=" * 60, file=sys.stderr)
 
-    print(f"\n{'=' * 60}", file=sys.stderr)
-    print(f"施設基準（{label}・通知）新旧対照表 抽出開始", file=sys.stderr)
-    print(f"{'=' * 60}", file=sys.stderr)
-
-    # Phase 1: ブロック抽出
+    # Phase 1: 両方のPDFからブロックを抽出
     print("\n[Phase 1] PDFからブロック抽出", file=sys.stderr)
-    r8_blocks_raw = extract_blocks_from_pdf(r8_pdf)
-    r6_blocks_raw = extract_blocks_from_pdf(r6_pdf)
+    r8_blocks_raw = extract_blocks_from_pdf(R8_PDF_PATH, R8_TOC_PAGES)
+    r6_blocks_raw = extract_blocks_from_pdf(R6_PDF_PATH, R6_TOC_PAGES)
 
-    # 見出しのみのブロックを除外、前文（別添・セクション未設定）も除外
-    r8_blocks = [b for b in r8_blocks_raw
-                 if not is_heading_only_block(b['text'])
-                 and (b['betten'] or b['section'])]
-    r6_blocks = [b for b in r6_blocks_raw
-                 if not is_heading_only_block(b['text'])
-                 and (b['betten'] or b['section'])]
+    # 見出しのみのブロックを除外
+    r8_blocks = [b for b in r8_blocks_raw if not is_heading_only_block(b['text'])]
+    r6_blocks = [b for b in r6_blocks_raw if not is_heading_only_block(b['text'])]
     print(f"  R8: {len(r8_blocks_raw)} → {len(r8_blocks)} ブロック（見出し除外後）",
           file=sys.stderr)
     print(f"  R6: {len(r6_blocks_raw)} → {len(r6_blocks)} ブロック（見出し除外後）",
@@ -619,19 +538,17 @@ def process_pair(config):
         r6_match = None
 
         if key in r6_by_key:
-            candidates = [c for c in r6_by_key[key]
-                          if id(c) not in matched_r6_ids]
+            candidates = [c for c in r6_by_key[key] if id(c) not in matched_r6_ids]
             if len(candidates) == 1:
                 r6_match = candidates[0]
             elif len(candidates) > 1:
                 best = max(candidates,
-                           key=lambda c: text_similarity(r8b['text'],
-                                                         c['text']))
+                           key=lambda c: text_similarity(r8b['text'], c['text']))
                 r6_match = best
 
+        # _from_splitブロック同士のマッチで類似度が低い場合は拒否
         skip_fallback = False
-        if r6_match and r8b.get('_from_split') and r6_match.get(
-                '_from_split'):
+        if r6_match and r8b.get('_from_split') and r6_match.get('_from_split'):
             if text_similarity(r8b['text'], r6_match['text']) < 0.3:
                 r6_match = None
                 skip_fallback = True
@@ -643,8 +560,7 @@ def process_pair(config):
                               if id(c) not in matched_r6_ids]
                 if candidates:
                     best = max(candidates,
-                               key=lambda c: text_similarity(r8b['text'],
-                                                             c['text']))
+                               key=lambda c: text_similarity(r8b['text'], c['text']))
                     if text_similarity(r8b['text'], best['text']) > 0.2:
                         r6_match = best
 
@@ -663,25 +579,23 @@ def process_pair(config):
 
         if r8_segments is None:
             if r6_match:
-                r6_idx_to_output_pos[r6_idx] = (
-                    len(output_rows) - 1 if output_rows else -1)
+                r6_idx_to_output_pos[r6_idx] = len(output_rows) - 1 if output_rows else -1
             continue
 
         if r6_match:
             r6_idx_to_output_pos[r6_idx] = len(output_rows)
 
         output_rows.append({
-            'betten': r8b['betten'],
             'section': r8b['section'],
-            'section_name': r8b.get('section_name', ''),
             'item_num': r8b['item_num'],
+            'sub_item': r8b.get('sub_item', ''),
+            'sub_sub': r8b.get('sub_sub', ''),
             'r8_segments': r8_segments,
             'r6_segments': r6_segments,
             'page': r8b['page'],
-            '_from_split': r8b.get('_from_split', False),
         })
 
-    # 削除項目の挿入
+    # R6のみ（削除）のブロック
     deleted_items = []
     for r6_idx, r6b in enumerate(r6_blocks):
         if id(r6b) not in matched_r6_ids:
@@ -692,10 +606,10 @@ def process_pair(config):
                     break
             r6_text = r6b['text']
             deleted_items.append((insert_pos, r6_idx, {
-                'betten': r6b['betten'],
                 'section': r6b['section'],
-                'section_name': r6b.get('section_name', ''),
                 'item_num': r6b['item_num'],
+                'sub_item': r6b.get('sub_item', ''),
+                'sub_sub': r6b.get('sub_sub', ''),
                 'r8_segments': [("（削除）", False)],
                 'r6_segments': [(r6_text, True)],
                 'page': 0,
@@ -711,10 +625,10 @@ def process_pair(config):
     print(f"  差分ブロック数: {len(output_rows)}", file=sys.stderr)
 
     # Phase 3: XLSX出力
-    print(f"\n[Phase 3] XLSX出力: {output_xlsx}", file=sys.stderr)
+    print(f"\n[Phase 3] XLSX出力: {OUTPUT_XLSX}", file=sys.stderr)
 
-    os.makedirs(os.path.dirname(output_xlsx), exist_ok=True)
-    wb = xlsxwriter.Workbook(output_xlsx)
+    os.makedirs(os.path.dirname(OUTPUT_XLSX), exist_ok=True)
+    wb = xlsxwriter.Workbook(OUTPUT_XLSX)
     ws = wb.add_worksheet('新旧対照表')
 
     header_fmt = wb.add_format({
@@ -728,30 +642,32 @@ def process_pair(config):
     })
     ul_fmt = wb.add_format({
         'font_name': '游ゴシック', 'font_size': 11,
-        'bold': True, 'underline': True,
+        'underline': True,
         'text_wrap': True, 'valign': 'top',
     })
 
-    headers = ['別添', '項目', '項番', '改正後（R8）', '改正前（R6）', 'ページ']
+    headers = ['セクション', '項番', 'サブ項番', '改正後（R8）', '改正前（R6）', 'ページ']
     for col, h in enumerate(headers):
         ws.write(0, col, h, header_fmt)
 
-    ws.set_column(0, 0, 12)   # 別添
-    ws.set_column(1, 1, 30)   # 項目（第NのM + 名称）
-    ws.set_column(2, 2, 10)   # 項番
-    ws.set_column(3, 3, 60)   # 改正後
-    ws.set_column(4, 4, 60)   # 改正前
-    ws.set_column(5, 5, 6)    # ページ
+    ws.set_column(0, 0, 15)
+    ws.set_column(1, 1, 8)
+    ws.set_column(2, 2, 12)
+    ws.set_column(3, 3, 55)
+    ws.set_column(4, 4, 55)
+    ws.set_column(5, 5, 6)
 
     for idx, row in enumerate(output_rows):
         r = idx + 1
-        section_display = row['section']
-        if row.get('section_name'):
-            section_display = f"{row['section']} {row['section_name']}"
+        sub_display = row.get('sub_sub', '')
+        if row.get('sub_item'):
+            sub_display = row['sub_item']
+            if row.get('sub_sub'):
+                sub_display = f"{row['sub_item']} {row['sub_sub']}"
 
-        ws.write_string(r, 0, row.get('betten', ''), normal_fmt)
-        ws.write_string(r, 1, section_display, normal_fmt)
-        ws.write_string(r, 2, row.get('item_num', ''), normal_fmt)
+        ws.write_string(r, 0, row.get('section', ''), normal_fmt)
+        ws.write_string(r, 1, row.get('item_num', ''), normal_fmt)
+        ws.write_string(r, 2, sub_display, normal_fmt)
         write_rich_cell(ws, r, 3, row['r8_segments'], normal_fmt, ul_fmt)
         write_rich_cell(ws, r, 4, row['r6_segments'], normal_fmt, ul_fmt)
         if row['page'] > 0:
@@ -761,11 +677,6 @@ def process_pair(config):
 
     wb.close()
     print(f"\n完了！ {len(output_rows)} 件の差分を出力しました。", file=sys.stderr)
-
-
-def main():
-    for config in CONFIGS:
-        process_pair(config)
 
 
 if __name__ == '__main__':
