@@ -5,430 +5,449 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>R8年度 DPCコーディング早見ガイド</title>
 <style>
-  @page { size: A4; margin: 15mm 12mm; }
+  @page { size: A4; margin: 18mm 15mm; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: "游ゴシック", "Yu Gothic", "Noto Sans JP", sans-serif;
-    font-size: 10pt; line-height: 1.6; color: #1a1a1a;
-    max-width: 210mm; margin: 0 auto; padding: 10mm;
-  }
-  h1 { font-size: 20pt; color: #1B3A5C; border-bottom: 3px solid #1B3A5C; padding-bottom: 6px; margin-bottom: 12px; }
-  h2 { font-size: 14pt; color: #fff; background: #2E5090; padding: 6px 12px; margin: 20px 0 10px; border-radius: 4px; page-break-after: avoid; }
-  h3 { font-size: 11pt; color: #2E5090; border-left: 4px solid #2E5090; padding-left: 8px; margin: 14px 0 6px; }
-  h4 { font-size: 10pt; color: #333; font-weight: bold; margin: 10px 0 4px; }
-  p, li { font-size: 10pt; }
-  table { width: 100%; border-collapse: collapse; margin: 8px 0 12px; font-size: 9pt; }
-  th { background: #2E5090; color: #fff; padding: 5px 6px; text-align: left; font-weight: bold; }
-  td { padding: 4px 6px; border: 1px solid #ccc; vertical-align: top; }
-  tr:nth-child(even) { background: #f4f7fb; }
-  .cover { text-align: center; padding: 40px 0 30px; page-break-after: always; }
-  .cover h1 { font-size: 26pt; border: none; margin-bottom: 8px; }
-  .cover .subtitle { font-size: 14pt; color: #555; margin-bottom: 30px; }
-  .cover .info { font-size: 10pt; color: #666; }
-  .rule-box { background: #EAF0F9; border: 2px solid #2E5090; border-radius: 8px; padding: 12px 16px; margin: 10px 0; }
-  .rule-num { display: inline-block; background: #2E5090; color: #fff; border-radius: 50%; width: 24px; height: 24px; text-align: center; line-height: 24px; font-weight: bold; font-size: 11pt; margin-right: 6px; }
-  .rule-title { font-weight: bold; font-size: 10.5pt; color: #1B3A5C; }
-  .rule-desc { margin-top: 3px; font-size: 9.5pt; color: #333; padding-left: 30px; }
-  .ng { background: #FDE8E8; color: #B71C1C; }
-  .ok { background: #E8F5E9; color: #1B5E20; }
-  .ng-label { display: inline-block; background: #D32F2F; color: #fff; font-size: 8pt; font-weight: bold; padding: 1px 6px; border-radius: 3px; margin-right: 4px; }
-  .ok-label { display: inline-block; background: #388E3C; color: #fff; font-size: 8pt; font-weight: bold; padding: 1px 6px; border-radius: 3px; margin-right: 4px; }
-  .new-badge { display: inline-block; background: #E65100; color: #fff; font-size: 7.5pt; font-weight: bold; padding: 1px 5px; border-radius: 3px; margin-left: 4px; vertical-align: middle; }
-  .point-box { background: #FFF8E1; border-left: 4px solid #F9A825; padding: 8px 12px; margin: 8px 0; font-size: 9.5pt; }
-  .qa-box { background: #F3E5F5; border: 1px solid #CE93D8; border-radius: 6px; padding: 10px 14px; margin: 8px 0; }
-  .qa-q { font-weight: bold; color: #6A1B9A; margin-bottom: 3px; }
-  .qa-a { color: #333; padding-left: 12px; }
-  .flow-container { display: flex; flex-direction: column; align-items: center; gap: 0; margin: 12px 0; }
-  .flow-box { background: #2E5090; color: #fff; padding: 8px 20px; border-radius: 8px; text-align: center; font-weight: bold; font-size: 10pt; min-width: 300px; }
-  .flow-box.decision { background: #F9A825; color: #1a1a1a; transform: rotate(0deg); border-radius: 4px; border: 2px solid #F57F17; }
-  .flow-box.action { background: #388E3C; color: #fff; }
-  .flow-box.warn { background: #D32F2F; color: #fff; }
-  .flow-arrow { font-size: 18pt; color: #2E5090; line-height: 1; }
-  .flow-label { font-size: 8pt; color: #666; }
-  .code-struct { display: flex; gap: 0; margin: 12px 0; justify-content: center; flex-wrap: wrap; }
-  .code-cell { border: 2px solid #2E5090; padding: 6px 4px; text-align: center; min-width: 28px; font-family: monospace; font-size: 12pt; font-weight: bold; }
-  .code-cell.layer1 { background: #BBDEFB; }
-  .code-cell.layer2 { background: #C8E6C9; }
-  .code-cell.layer3 { background: #FFF9C4; }
-  .code-label { font-size: 7.5pt; color: #555; text-align: center; }
-  .toc { background: #f8f9fa; border: 1px solid #ddd; padding: 12px 20px; margin: 10px 0 20px; border-radius: 6px; }
-  .toc a { color: #2E5090; text-decoration: none; }
-  .toc a:hover { text-decoration: underline; }
-  .toc li { margin: 3px 0; list-style: none; }
-  .toc li::before { content: ""; }
-  .footer { text-align: center; font-size: 8pt; color: #999; margin-top: 30px; padding-top: 10px; border-top: 1px solid #ddd; }
-  @media print {
-    .page-break { page-break-before: always; }
-    body { padding: 0; }
-    h2 { page-break-after: avoid; }
-  }
-  ul, ol { padding-left: 20px; margin: 4px 0 8px; }
+  body { font-family: "游ゴシック", "Yu Gothic", sans-serif; font-size: 9.5pt; line-height: 1.65; color: #222; max-width: 190mm; margin: 0 auto; padding: 12mm; }
+  h1 { font-size: 18pt; font-weight: 800; border-bottom: 2px solid #222; padding-bottom: 4px; margin-bottom: 10px; }
+  h2 { font-size: 12pt; font-weight: 700; background: #222; color: #fff; padding: 5px 10px; margin: 22px 0 8px; }
+  h3 { font-size: 10pt; font-weight: 700; border-bottom: 1px solid #999; padding-bottom: 2px; margin: 14px 0 6px; }
+  table { width: 100%; border-collapse: collapse; margin: 6px 0 10px; font-size: 9pt; }
+  th { background: #333; color: #fff; padding: 4px 6px; text-align: left; font-size: 8.5pt; }
+  td { padding: 3px 6px; border: 1px solid #bbb; vertical-align: top; }
+  tr:nth-child(even) td { background: #f7f7f7; }
+  ul, ol { padding-left: 18px; margin: 4px 0 6px; }
+  .cover { text-align: center; padding: 50px 0 40px; page-break-after: always; }
+  .cover h1 { font-size: 24pt; border: none; margin-bottom: 6px; }
+  .note { background: #f5f5f5; border-left: 3px solid #555; padding: 6px 10px; margin: 6px 0; font-size: 9pt; }
+  .new { font-size: 7.5pt; font-weight: bold; background: #222; color: #fff; padding: 1px 5px; border-radius: 2px; vertical-align: middle; }
+  .rule { border: 1px solid #999; padding: 8px 10px; margin: 6px 0; }
+  .rule b { font-size: 10pt; }
+  .qa { background: #fafafa; border: 1px solid #ccc; padding: 6px 10px; margin: 5px 0; font-size: 9pt; }
+  .qa-q { font-weight: bold; }
+  .qa-a { padding-left: 10px; margin-top: 2px; }
+  .ng { background: #f5e5e5; }
+  .ok { background: #e5f0e5; }
+  .flow { display: flex; flex-direction: column; align-items: center; gap: 2px; margin: 10px 0; }
+  .flow-box { border: 1px solid #333; padding: 6px 16px; text-align: center; font-size: 9pt; min-width: 280px; }
+  .flow-box.dark { background: #333; color: #fff; }
+  .flow-box.gray { background: #eee; }
+  .flow-arr { font-size: 14pt; color: #555; line-height: 1; }
+  .code-fig { display: flex; justify-content: center; margin: 10px 0; }
+  .code-fig div { border: 1px solid #333; padding: 4px 3px; text-align: center; min-width: 22px; font-family: monospace; font-size: 11pt; font-weight: bold; }
+  .code-fig .l1 { background: #ddd; }
+  .code-fig .l2 { background: #eee; }
+  .code-fig .l3 { background: #fff; }
+  .code-label { font-size: 7pt; color: #666; }
+  .footer { text-align: center; font-size: 7.5pt; color: #999; margin-top: 20px; border-top: 1px solid #ccc; padding-top: 6px; }
+  .toc { margin: 8px 0 16px; }
+  .toc li { list-style: none; margin: 2px 0; }
+  .toc a { color: #222; text-decoration: none; }
+  @media print { .page-break { page-break-before: always; } body { padding: 0; } }
 </style>
 </head>
 <body>
 
-<!-- ========== 1. 表紙 ========== -->
 <div class="cover">
-  <div style="font-size:11pt; color:#2E5090; margin-bottom:20px;">入院医事課向け 実務解説資料</div>
-  <h1>R8年度<br>DPCコーディング早見ガイド</h1>
-  <div class="subtitle">DPC/PDPS 傷病名コーディングテキスト 改定版（第7版）準拠</div>
-  <div style="margin:30px 0;">
-    <div style="display:inline-block; background:#EAF0F9; border:2px solid #2E5090; border-radius:8px; padding:15px 30px; text-align:left;">
-      <div style="font-size:9pt; color:#555;">参考資料</div>
-      <div style="font-size:9.5pt; margin-top:4px;">1. DPC/PDPS 傷病名コーディングテキスト 改定版（第7版）令和8年6月</div>
-      <div style="font-size:9.5pt;">2. 疑義解釈資料の送付について（その2）令和8年3月31日 別添3 DPC部分</div>
-    </div>
+  <div style="font-size:10pt; color:#555; margin-bottom:16px;">入院医事課向け 実務解説資料</div>
+  <h1>R8年度 DPCコーディング早見ガイド</h1>
+  <div style="font-size:11pt; color:#555; margin:6px 0 30px;">DPC/PDPS 傷病名コーディングテキスト 改定版（第7版）準拠</div>
+  <div style="text-align:left; display:inline-block; border:1px solid #999; padding:12px 20px; font-size:9pt;">
+    <div style="font-weight:bold; margin-bottom:4px;">参考資料</div>
+    1. DPC/PDPS 傷病名コーディングテキスト 改定版（第7版）令和8年6月<br>
+    2. 疑義解釈資料の送付について（その2）令和8年3月31日 別添3
   </div>
-  <div class="info">令和8年6月施行対応版</div>
-  <div class="info" style="margin-top:4px;">厚生労働省保険局医療課 原文に基づき作成</div>
+  <div style="margin-top:30px; font-size:9pt; color:#777;">令和8年6月施行対応版 ｜ 厚生労働省保険局医療課 原文に基づき作成</div>
 </div>
 
-<!-- ========== 目次 ========== -->
+<!-- 目次 -->
 <h2>目次</h2>
-<div class="toc">
-<ol>
-  <li><a href="#sec1">1. 本書の使い方</a></li>
-  <li><a href="#sec2">2. DPCの基本構造 早見表</a></li>
-  <li><a href="#sec3">3. コーディングの鉄則 7か条</a></li>
-  <li><a href="#sec4">4. 医療資源病名の選択フローチャート</a></li>
-  <li><a href="#sec5">5. よくある間違い NG/OK対照表</a></li>
-  <li><a href="#sec6">6. 特殊ケース対応ガイド + 疑義解釈Q&amp;A</a></li>
-  <li><a href="#sec7">7. R8版（第7版）の主な変更点</a></li>
-  <li><a href="#sec8">8. 付録（Rコード一覧・.9コード対応例・用語集）</a></li>
+<ol class="toc">
+  <li><a href="#s1">1. DPCの基本構造</a></li>
+  <li><a href="#s2">2. コーディングの鉄則 7か条</a></li>
+  <li><a href="#s3">3. 医療資源病名の選択フロー</a></li>
+  <li><a href="#s4">4. よくある間違い NG/OK一覧</a></li>
+  <li><a href="#s5">5. 特殊ケース対応</a></li>
+  <li><a href="#s6">6. 疑義解釈Q&amp;A（実務で頻出）</a></li>
+  <li><a href="#s7">7. R8版の変更点</a></li>
+  <li><a href="#s8">8. 付録</a></li>
 </ol>
+
+<!-- 1 -->
+<h2 id="s1">1. DPCの基本構造</h2>
+
+<h3>14桁コードの構造</h3>
+<div class="code-fig">
+  <div><div class="l1" style="border-bottom:none;">0</div><div class="code-label">疾患</div></div>
+  <div><div class="l1" style="border-bottom:none;">1</div><div class="code-label">コード</div></div>
+  <div><div class="l1" style="border-bottom:none;">0</div><div class="code-label"></div></div>
+  <div><div class="l1" style="border-bottom:none;">0</div><div class="code-label"></div></div>
+  <div><div class="l1" style="border-bottom:none;">6</div><div class="code-label"></div></div>
+  <div><div class="l1" style="border-bottom:none;">0</div><div class="code-label"></div></div>
+  <div><div class="l1" style="border-bottom:none;">x</div><div class="code-label">病態</div></div>
+  <div><div class="l1" style="border-bottom:none;">x</div><div class="code-label">年齢</div></div>
+  <div><div class="l2" style="border-bottom:none;">9</div><div class="code-label">手術</div></div>
+  <div><div class="l2" style="border-bottom:none;">9</div><div class="code-label"></div></div>
+  <div><div class="l3" style="border-bottom:none;">0</div><div class="code-label">処1</div></div>
+  <div><div class="l3" style="border-bottom:none;">0</div><div class="code-label">処2</div></div>
+  <div><div class="l3" style="border-bottom:none;">0</div><div class="code-label">副傷</div></div>
+  <div><div class="l3" style="border-bottom:none;">x</div><div class="code-label">重症</div></div>
+</div>
+<div style="text-align:center; font-size:8pt; color:#555;">
+  濃灰=1層目（傷病名） ｜ 薄灰=2層目（手術） ｜ 白=3層目（処置・副傷病・重症度）
 </div>
 
-<!-- ========== 1. 本書の使い方 ========== -->
-<h2 id="sec1">1. 本書の使い方</h2>
-<p>本資料は、厚生労働省「DPC/PDPS 傷病名コーディングテキスト 改定版（第7版）」（全83ページ）の内容を、入院医事課の実務で素早く参照できるよう要約・再構成したものです。</p>
-
-<div class="point-box">
-<strong>対象読者：</strong>DPCレセプト作成・コーディング確認を担当する入院医事課職員<br>
-<strong>使い方：</strong>日常業務では「鉄則7か条」と「NG/OK対照表」を参照。判断に迷ったら「フローチャート」と「特殊ケース」を確認。詳細は原文を参照してください。
+<div class="note">
+<strong>選択の原則：</strong>1層目→2層目→3層目の<strong>一方通行</strong>。3層目から遡って傷病名を選択してはならない。
 </div>
 
-<!-- ========== 2. DPC基本構造 ========== -->
-<div class="page-break"></div>
-<h2 id="sec2">2. DPCの基本構造 早見表</h2>
-
-<h3>DPC 14桁コードの構造</h3>
-<p>DPCは14桁の英数字で構成され、3層構造になっています。</p>
-
-<div style="text-align:center; margin:12px 0;">
-<div class="code-struct">
-  <div><div class="code-cell layer1">0</div><div class="code-label">疾</div></div>
-  <div><div class="code-cell layer1">1</div><div class="code-label">患</div></div>
-  <div><div class="code-cell layer1">0</div><div class="code-label">コ</div></div>
-  <div><div class="code-cell layer1">0</div><div class="code-label">｜</div></div>
-  <div><div class="code-cell layer1">6</div><div class="code-label">ド</div></div>
-  <div><div class="code-cell layer1">0</div><div class="code-label"></div></div>
-  <div><div class="code-cell layer1">x</div><div class="code-label">病態</div></div>
-  <div><div class="code-cell layer1">x</div><div class="code-label">年齢</div></div>
-  <div><div class="code-cell layer2">9</div><div class="code-label">手</div></div>
-  <div><div class="code-cell layer2">9</div><div class="code-label">術</div></div>
-  <div><div class="code-cell layer3">0</div><div class="code-label">処1</div></div>
-  <div><div class="code-cell layer3">0</div><div class="code-label">処2</div></div>
-  <div><div class="code-cell layer3">0</div><div class="code-label">副傷</div></div>
-  <div><div class="code-cell layer3">x</div><div class="code-label">重症</div></div>
-</div>
-<div style="margin-top:6px; font-size:9pt;">
-  <span style="display:inline-block; width:14px; height:14px; background:#BBDEFB; border:1px solid #2E5090; vertical-align:middle;"></span> 1層目：傷病名（ICD-10）
-  <span style="display:inline-block; width:14px; height:14px; background:#C8E6C9; border:1px solid #2E5090; vertical-align:middle; margin-left:12px;"></span> 2層目：手術（Kコード）
-  <span style="display:inline-block; width:14px; height:14px; background:#FFF9C4; border:1px solid #2E5090; vertical-align:middle; margin-left:12px;"></span> 3層目：処置・副傷病・重症度
-</div>
-</div>
-
-<h3>3層構造の選択フロー（一方通行）</h3>
-<div class="flow-container">
-  <div class="flow-box">1層目：医療資源病名 → 上6桁分類を決定</div>
-  <div class="flow-arrow">▼</div>
-  <div class="flow-box">2層目：実施した手術 → 手術分類を決定</div>
-  <div class="flow-arrow">▼</div>
-  <div class="flow-box">3層目：処置・副傷病・重症度等を決定</div>
-  <div class="flow-arrow">▼</div>
-  <div class="flow-box action">DPC 14桁コード確定</div>
-</div>
-<div class="point-box">
-<strong>重要：</strong>1層目→2層目→3層目の<strong>一方通行</strong>で選択します。3層目から遡って傷病名を選択するべきではありません（＝手術に合わせて病名を選ぶのはNG）。
-</div>
-
-<h3>MDC（主要診断群）一覧</h3>
+<h3>MDC一覧</h3>
 <table>
-<tr><th style="width:15%;">コード</th><th>名称</th><th style="width:15%;">コード</th><th>名称</th></tr>
-<tr><td>01</td><td>神経系疾患</td><td>10</td><td>内分泌・栄養・代謝に関する疾患</td></tr>
-<tr><td>02</td><td>眼科系疾患</td><td>11</td><td>腎・尿路系疾患及び男性生殖器系疾患</td></tr>
-<tr><td>03</td><td>耳鼻咽喉科系疾患</td><td>12</td><td>女性生殖器系疾患及び産褥期疾患・異常妊娠分娩</td></tr>
-<tr><td>04</td><td>呼吸器系疾患</td><td>13</td><td>血液・造血器・免疫臓器の疾患</td></tr>
+<tr><th>コード</th><th>名称</th><th>コード</th><th>名称</th></tr>
+<tr><td>01</td><td>神経系疾患</td><td>10</td><td>内分泌・栄養・代謝</td></tr>
+<tr><td>02</td><td>眼科系疾患</td><td>11</td><td>腎・尿路系及び男性生殖器系</td></tr>
+<tr><td>03</td><td>耳鼻咽喉科系疾患</td><td>12</td><td>女性生殖器系及び産褥期・異常妊娠</td></tr>
+<tr><td>04</td><td>呼吸器系疾患</td><td>13</td><td>血液・造血器・免疫臓器</td></tr>
 <tr><td>05</td><td>循環器系疾患</td><td>14</td><td>新生児疾患、先天性奇形</td></tr>
-<tr><td>06</td><td>消化器系疾患、肝臓・胆道・膵臓疾患</td><td>15</td><td>小児疾患</td></tr>
+<tr><td>06</td><td>消化器系、肝胆膵</td><td>15</td><td>小児疾患</td></tr>
 <tr><td>07</td><td>筋骨格系疾患</td><td>16</td><td>外傷・熱傷・中毒</td></tr>
-<tr><td>08</td><td>皮膚・皮下組織の疾患</td><td>17</td><td>精神疾患</td></tr>
+<tr><td>08</td><td>皮膚・皮下組織</td><td>17</td><td>精神疾患</td></tr>
 <tr><td>09</td><td>乳房の疾患</td><td>18</td><td>その他</td></tr>
 </table>
 
-<h3>レセプト記載欄の傷病名一覧</h3>
+<h3>レセプト傷病名記載欄</h3>
 <table>
-<tr><th style="width:30%;">記載欄</th><th>留意事項</th></tr>
-<tr><td>①「傷病名」欄</td><td>医療資源病名を選択。入院中の主要な傷病名・病態に基づき決定</td></tr>
-<tr><td>②「定義副傷病名」欄</td><td>診断群分類点数表に定義されている副傷病名がある場合に記載</td></tr>
-<tr><td>③「主傷病名」</td><td>主治医が医学的判断に基づき決定（医療資源の投入量の多寡によらない）</td></tr>
-<tr><td>「入院の契機となった傷病名」</td><td>入院し治療する必要があると判断する根拠となった傷病名を1つ</td></tr>
-<tr><td>「医療資源を2番目に投入した傷病名」</td><td>医療資源を2番目に投入した傷病名を1つ</td></tr>
-<tr><td>「入院時併存傷病名」（最大4つ）</td><td>入院時に併存している傷病名。重要なものから最大4つ</td></tr>
-<tr><td>「入院後発症傷病名」（最大4つ）</td><td>入院後に発症した傷病名。重要なものから最大4つ</td></tr>
+<tr><th>欄</th><th>内容</th></tr>
+<tr><td>傷病名</td><td>医療資源病名。入院中の主要な傷病名・病態に基づき決定</td></tr>
+<tr><td>定義副傷病名</td><td>診断群分類点数表に定義されている副傷病名がある場合</td></tr>
+<tr><td>主傷病名</td><td>主治医の医学的判断で決定（医療資源投入量によらない）</td></tr>
+<tr><td>入院の契機となった傷病名</td><td>入院の根拠となった傷病名を1つ</td></tr>
+<tr><td>医療資源を2番目に投入した傷病名</td><td>1つ記載</td></tr>
+<tr><td>入院時併存傷病名（最大4）</td><td>入院時に併存する傷病名。重要順に最大4つ</td></tr>
+<tr><td>入院後発症傷病名（最大4）</td><td>入院後に発症した傷病名。重要順に最大4つ</td></tr>
 </table>
 
-<!-- ========== 3. 鉄則7か条 ========== -->
+<!-- 2 -->
 <div class="page-break"></div>
-<h2 id="sec3">3. コーディングの鉄則 7か条</h2>
-<p>コーディングテキスト全体のエッセンスを7つの鉄則にまとめました。</p>
+<h2 id="s2">2. コーディングの鉄則 7か条</h2>
 
-<div class="rule-box" style="margin-top:12px;">
-  <div><span class="rule-num">1</span><span class="rule-title">医療資源病名は「退院時」に「1つ」決定する</span></div>
-  <div class="rule-desc">1入院期間を通して、医療資源を最も投入した傷病名を退院時に1つ選択。退院後の変更はしない。DPC算定病床に入院していた期間が対象。<br>
-  <em>疑義解釈 問3-1-2：</em>独立した複数の疾病に対して治療が行われた場合にも、医療資源病名は1つに限る。</div>
+<div class="rule">
+<b>1. 医療資源病名は「退院時」に「1つ」決定する</b><br>
+1入院期間を通して最も医療資源を投入した傷病名を退院時に1つ選択。退院後の変更不可。DPC算定病床の入院期間が対象（それ以外の病棟の投入量は含めない）。
 </div>
 
-<div class="rule-box">
-  <div><span class="rule-num">2</span><span class="rule-title">1層目→3層目の「一方通行」で選択する</span></div>
-  <div class="rule-desc">傷病名（1層目）→手術（2層目）→処置・副傷病等（3層目）の順で決定。手術や処置に合わせて傷病名を逆算してはならない。</div>
+<div class="rule">
+<b>2. 1層目→3層目の一方通行で選択する</b><br>
+傷病名→手術→処置・副傷病の順で決定。手術に合わせて傷病名を逆算してはならない。
 </div>
 
-<div class="rule-box">
-  <div><span class="rule-num">3</span><span class="rule-title">医療資源病名と手術・処置に「乖離」がないこと</span></div>
-  <div class="rule-desc">医療資源病名と実施した手術・処置の間に乖離がある場合は、理由・根拠を診療録に記載し、症状詳記を添付する。検査等の診断行為との乖離も同様。<br>
-  <em>疑義解釈 問3-1-5：</em>乖離があり得るが、相応の根拠が必要。</div>
+<div class="rule">
+<b>3. 医療資源病名と手術・処置に乖離がないこと</b><br>
+乖離がある場合は診療録に根拠を記載し、症状詳記を添付する。検査等の診断行為との乖離も同様。乖離自体はあり得るが、相応の根拠が必要。
 </div>
 
-<div class="rule-box">
-  <div><span class="rule-num">4</span><span class="rule-title">傷病名は「精緻かつ医学的に適切」な表現にする</span></div>
-  <div class="rule-desc">包括的な表現（「心不全」「呼吸不全」等の臓器不全病名）は避け、原疾患が明らかなら原疾患を選択。部位・急性/慢性・良性/悪性等を明確に。<br>
-  例：「胃癌」ではなく「胃体部癌（C162）」。「骨折」ではなく「右大腿骨頸部骨折（S720）」</div>
+<div class="rule">
+<b>4. 傷病名は精緻かつ医学的に適切な表現にする</b><br>
+部位・急性/慢性・良性/悪性等を明確に。「胃癌」→「胃体部癌（C162）」。「骨折」→「右大腿骨頸部骨折（S720）」。
 </div>
 
-<div class="rule-box">
-  <div><span class="rule-num">5</span><span class="rule-title">原疾患が判明していれば臓器不全病名を選択しない</span></div>
-  <div class="rule-desc">肺炎→呼吸不全（NG）、急性心筋梗塞→心不全（NG）。原疾患を医療資源病名に。ただし、原疾患が判明しない場合は使用可（根拠が必要）。</div>
+<div class="rule">
+<b>5. 原疾患が判明していれば臓器不全病名を選択しない</b><br>
+肺炎→呼吸不全はNG。心筋梗塞→心不全はNG。原疾患を選択する。ただし原疾患不明の場合は使用可（根拠が必要）。
 </div>
 
-<div class="rule-box">
-  <div><span class="rule-num">6</span><span class="rule-title">すべての根拠は「診療録の記載」にある</span></div>
-  <div class="rule-desc">診療報酬の請求は診療録の記載に基づく。レセプトに記載された事項は診療録に記載されていなければならない。疑義がある場合は必ず主治医に確認。</div>
+<div class="rule">
+<b>6. すべての根拠は診療録の記載にある</b><br>
+レセプトに記載された事項は診療録に記載されていなければならない。疑義がある場合は必ず主治医に確認。
 </div>
 
-<div class="rule-box">
-  <div><span class="rule-num">7</span><span class="rule-title">「.9コード」（部位不明・詳細不明）は例外的な選択</span></div>
-  <div class="rule-desc">部位や病態が確認できる環境にあるDPC病院では、.9コードの頻回な使用は診療録の記載不備や確認不足が原因と考えられる。適切な確認体制の構築が必要。</div>
+<div class="rule">
+<b>7. 「.9コード」（部位不明・詳細不明）は例外的な選択</b><br>
+DPC病院では部位や病態が確認可能。.9コードの頻回な使用は記載不備・確認不足が原因と考えられる。
 </div>
 
-<!-- ========== 4. フローチャート ========== -->
-<div class="page-break"></div>
-<h2 id="sec4">4. 医療資源病名の選択フローチャート</h2>
-<p>医療資源病名を選択する際の判断フローです。</p>
+<!-- 3 -->
+<h2 id="s3">3. 医療資源病名の選択フロー</h2>
 
-<div class="flow-container" style="margin-top:16px;">
-  <div class="flow-box" style="background:#1B3A5C;">入院（DPC算定病床）</div>
-  <div class="flow-arrow">▼</div>
-  <div class="flow-box decision">入院期間中に診断は確定したか？</div>
-  <div style="display:flex; gap:40px; align-items:flex-start;">
-    <div style="text-align:center;">
-      <div class="flow-label">Yes</div><div class="flow-arrow">▼</div>
-      <div class="flow-box" style="font-size:9pt;">確定した傷病名で<br>医療資源病名を選択</div>
-    </div>
-    <div style="text-align:center;">
-      <div class="flow-label">No</div><div class="flow-arrow">▼</div>
-      <div class="flow-box" style="font-size:9pt; background:#F57F17;">「○○疑い」で選択<br>（Rコードは限定的）</div>
-    </div>
+<div class="flow">
+  <div class="flow-box dark">入院（DPC算定病床）</div>
+  <div class="flow-arr">▼</div>
+  <div class="flow-box gray">入院期間中に診断は確定したか？</div>
+  <div style="display:flex; gap:30px;">
+    <div style="text-align:center;"><div style="font-size:8pt;">Yes ▼</div><div class="flow-box">確定した傷病名で選択</div></div>
+    <div style="text-align:center;"><div style="font-size:8pt;">No ▼</div><div class="flow-box">「○○疑い」で選択<br><span style="font-size:8pt;">（Rコードは限定的）</span></div></div>
   </div>
-  <div class="flow-arrow">▼</div>
-  <div class="flow-box decision">複数の病態がある場合、どの病態に最も医療資源を投入したか？</div>
-  <div class="flow-arrow">▼</div>
-  <div class="flow-box" style="font-size:9pt;">最も医療資源を投入した1つの傷病名を選択<br>（手術の点数が最も高い診療行為に関連する傷病が一般的だが、慎重に判断）</div>
-  <div class="flow-arrow">▼</div>
-  <div class="flow-box decision">医療資源病名と手術・処置に乖離はないか？</div>
-  <div style="display:flex; gap:40px; align-items:flex-start;">
-    <div style="text-align:center;">
-      <div class="flow-label">乖離なし</div><div class="flow-arrow">▼</div>
-      <div class="flow-box action" style="font-size:9pt;">退院時にDPCコード確定</div>
-    </div>
-    <div style="text-align:center;">
-      <div class="flow-label">乖離あり</div><div class="flow-arrow">▼</div>
-      <div class="flow-box warn" style="font-size:9pt;">診療録に根拠を記載<br>症状詳記を添付</div>
-    </div>
+  <div class="flow-arr">▼</div>
+  <div class="flow-box gray">複数病態がある → 最も医療資源を投入した傷病を1つ選択</div>
+  <div class="flow-arr">▼</div>
+  <div class="flow-box gray">手術・処置との乖離はないか？</div>
+  <div style="display:flex; gap:30px;">
+    <div style="text-align:center;"><div style="font-size:8pt;">なし ▼</div><div class="flow-box dark">退院時にDPCコード確定</div></div>
+    <div style="text-align:center;"><div style="font-size:8pt;">あり ▼</div><div class="flow-box">診療録に根拠記載+症状詳記</div></div>
   </div>
 </div>
 
-<div class="point-box" style="margin-top:12px;">
-<strong>チェックポイント</strong>
-<ul style="margin-top:4px;">
-<li>傷病名は部位・急性慢性・良悪性等が明確か？</li>
-<li>原疾患があるのに臓器不全病名を選んでいないか？</li>
-<li>退院後に病理結果が出ても、DPCの変更はしない</li>
-<li>「医療資源」＝ヒト・モノ・カネの総体（包括部分+出来高部分）</li>
-<li>DPC算定病床以外の医療資源投入量は含めない（疑義解釈 問3-1-3）</li>
-</ul>
+<div class="note">
+<strong>チェック：</strong>部位・急性慢性・良悪性は明確か？ ／ 臓器不全病名を安易に選んでいないか？ ／ 退院後の病理結果でDPC変更はしない ／ 医療資源＝ヒト・モノ・カネの総体 ／ 退院時処方の薬剤料・手術中薬剤料は医療資源に含めない
 </div>
 
-<!-- ========== 5. NG/OK対照表 ========== -->
+<!-- 4 -->
 <div class="page-break"></div>
-<h2 id="sec5">5. よくある間違い NG/OK対照表</h2>
+<h2 id="s4">4. よくある間違い NG/OK一覧</h2>
 
-<h3>5-1. 原疾患があるのに臓器不全病名を選択</h3>
+<h3>4-1. 原疾患があるのに臓器不全病名を選択</h3>
 <table>
-<tr><th style="width:5%;">No</th><th style="width:35%;">NG例（不適切）</th><th style="width:35%;">OK例（適切）</th><th>解説</th></tr>
-<tr><td>1</td><td class="ng"><span class="ng-label">NG</span>肺炎 → 呼吸不全（J96$）</td><td class="ok"><span class="ok-label">OK</span>肺炎（J18$等）を医療資源病名に</td><td>原疾患が明らかなら原疾患を選択</td></tr>
-<tr><td>2</td><td class="ng"><span class="ng-label">NG</span>急性心筋梗塞 → 心不全（I50$）</td><td class="ok"><span class="ok-label">OK</span>急性心筋梗塞（I21$）を選択</td><td>心不全は結果であり原疾患を選ぶ</td></tr>
-<tr><td>3</td><td class="ng"><span class="ng-label">NG</span>消耗性疾患 → 低アルブミン血症（E880）</td><td class="ok"><span class="ok-label">OK</span>原疾患を選択</td><td>部分的現象を意図的に選択してはならない</td></tr>
-<tr><td>4</td><td class="ng"><span class="ng-label">NG</span>出血 → 貧血（D649）で輸血</td><td class="ok"><span class="ok-label">OK</span>原因が明確な出血の原疾患を選択</td><td>同上</td></tr>
-<tr><td>5</td><td class="ng"><span class="ng-label">NG</span>化学療法中 → 血小板減少症（D696）</td><td class="ok"><span class="ok-label">OK</span>悪性腫瘍を医療資源病名に</td><td>同上</td></tr>
-<tr><td>6</td><td class="ng"><span class="ng-label">NG</span>化学療法中 → 好中球減少症（D70）</td><td class="ok"><span class="ok-label">OK</span>悪性腫瘍を医療資源病名に</td><td>同上</td></tr>
+<tr><th>NG（不適切）</th><th>OK（適切）</th></tr>
+<tr><td class="ng">肺炎 → 呼吸不全（J96$）で選択</td><td class="ok">肺炎（J18$等）を医療資源病名に</td></tr>
+<tr><td class="ng">急性心筋梗塞 → 心不全（I50$）で選択</td><td class="ok">急性心筋梗塞（I21$）を選択</td></tr>
+<tr><td class="ng">消耗性疾患 → 低アルブミン血症（E880）</td><td class="ok">原疾患を選択</td></tr>
+<tr><td class="ng">出血 → 貧血（D649）で輸血</td><td class="ok">出血の原疾患を選択</td></tr>
+<tr><td class="ng">化学療法中 → 血小板減少症（D696）</td><td class="ok">悪性腫瘍を選択</td></tr>
+<tr><td class="ng">化学療法中 → 好中球減少症（D70）</td><td class="ok">悪性腫瘍を選択</td></tr>
 </table>
 
-<h3>5-2. 傷病名の精度不足（.9コード・曖昧表現）</h3>
+<h3>4-2. 傷病名の精度不足</h3>
 <table>
-<tr><th style="width:5%;">No</th><th style="width:35%;">NG例</th><th style="width:35%;">OK例</th><th>解説</th></tr>
-<tr><td>1</td><td class="ng"><span class="ng-label">NG</span>胃癌（C169 部位不明）</td><td class="ok"><span class="ok-label">OK</span>胃体部癌（C162）</td><td>部位を明確に</td></tr>
-<tr><td>2</td><td class="ng"><span class="ng-label">NG</span>大腸癌</td><td class="ok"><span class="ok-label">OK</span>S状結腸癌</td><td>部位を特定</td></tr>
-<tr><td>3</td><td class="ng"><span class="ng-label">NG</span>狭心症</td><td class="ok"><span class="ok-label">OK</span>不安定狭心症（I200）</td><td>病態を明確に</td></tr>
-<tr><td>4</td><td class="ng"><span class="ng-label">NG</span>骨折（T1420 部位不明）</td><td class="ok"><span class="ok-label">OK</span>尺骨骨折（S5220）</td><td>部位+開放性/閉鎖性を明記</td></tr>
-<tr><td>5</td><td class="ng"><span class="ng-label">NG</span>膵炎（K859 詳細不明）</td><td class="ok"><span class="ok-label">OK</span>慢性膵炎（K861）</td><td>急性/慢性を区別</td></tr>
-<tr><td>6</td><td class="ng"><span class="ng-label">NG</span>神経膠腫（C719 部位不明）</td><td class="ok"><span class="ok-label">OK</span>頭頂葉神経膠腫（C713）</td><td>脳腫瘍は部位+病理+良悪性を明記</td></tr>
+<tr><th>NG（曖昧）</th><th>OK（精緻）</th><th>ポイント</th></tr>
+<tr><td class="ng">胃癌 → C169（部位不明）</td><td class="ok">胃体部癌 → C162</td><td>部位を明確に</td></tr>
+<tr><td class="ng">大腸癌</td><td class="ok">S状結腸癌</td><td>部位を特定</td></tr>
+<tr><td class="ng">狭心症</td><td class="ok">不安定狭心症（I200）</td><td>病態を明確に</td></tr>
+<tr><td class="ng">骨折 → T1420（部位不明）</td><td class="ok">尺骨骨折 → S5220</td><td>部位+開放/閉鎖性</td></tr>
+<tr><td class="ng">膵炎 → K859（詳細不明）</td><td class="ok">慢性膵炎 → K861</td><td>急性/慢性を区別</td></tr>
+<tr><td class="ng">神経膠腫 → C719（部位不明）</td><td class="ok">頭頂葉神経膠腫 → C713</td><td>部位+良悪性</td></tr>
 </table>
 
-<h3>5-3. 医療資源病名と手術の乖離</h3>
+<h3>4-3. 修飾語によるICDコード変化</h3>
 <table>
-<tr><th style="width:5%;">No</th><th style="width:30%;">医療資源病名</th><th style="width:30%;">手術</th><th>問題点</th></tr>
-<tr><td>1</td><td class="ng">爪白癬（B351）</td><td>口腔・顎・顔面悪性腫瘍切除術</td><td>医学的妥当性なし</td></tr>
-<tr><td>2</td><td class="ng">不安定狭心症（I200）</td><td>人工関節置換術（膝）</td><td>医学的妥当性なし</td></tr>
-<tr><td>3</td><td class="ng">気管支肺炎（J180）</td><td>骨折観血的手術（大腿）</td><td>医学的妥当性なし</td></tr>
+<tr><th>修飾語なし → 誤ったコード</th><th>修飾語あり → 正しいコード</th></tr>
+<tr><td class="ng">胃癌 → C169（部位不明）</td><td class="ok">「噴門部」＋胃癌 → 噴門癌 C160</td></tr>
+<tr><td class="ng">骨折 → T1420（部位不明）</td><td class="ok">「尺骨」＋骨折 → 尺骨骨折 S5220</td></tr>
+<tr><td class="ng">膵炎 → K859（急性、詳細不明）</td><td class="ok">「慢性」＋膵炎 → 慢性膵炎 K861</td></tr>
 </table>
 
-<h3>5-4. 修飾語によるICDコード変化（注意！）</h3>
-<table>
-<tr><th>修飾語なし（NG）</th><th>修飾語あり（OK）</th><th>修飾語</th></tr>
-<tr><td class="ng">胃癌 → C169（部位不明）</td><td class="ok">噴門癌 → C160</td><td>「噴門部」</td></tr>
-<tr><td class="ng">骨折 → T1420（部位不明）</td><td class="ok">尺骨骨折 → S5220</td><td>「尺骨」</td></tr>
-<tr><td class="ng">膵炎 → K859（詳細不明）</td><td class="ok">慢性膵炎 → K861</td><td>「慢性」</td></tr>
-</table>
-
-<!-- ========== 6. 特殊ケース ========== -->
+<!-- 5 -->
 <div class="page-break"></div>
-<h2 id="sec6">6. 特殊ケース対応ガイド + 疑義解釈Q&amp;A</h2>
+<h2 id="s5">5. 特殊ケース対応</h2>
 
-<h3>6-1. 疑い病名（診断未確定）</h3>
-<p>退院時点で診断が確定していない場合は「○○疑い」で選択。ただし：</p>
+<h3>5-1. 疑い病名（診断未確定）</h3>
 <ul>
-  <li>入院期間中に診断を確定し、確定した病名でDPCを決定するのが原則</li>
-  <li>Rコードは原則使用不可（例外あり → 付録参照）</li>
-  <li>確定診断がついたのに修正されていない例が多い → 退院前に必ず確認</li>
-</ul>
-<div class="qa-box">
-  <div class="qa-q">疑義解釈 問3-1-8：いわゆる疑い病名により、診断群分類区分を決定してよいか。</div>
-  <div class="qa-a">原則として入院期間中に診断を確定し、確定した病名で決定すること。ただし、検査入院等で確定診断がつかなかった場合は疑い病名により決定できる。</div>
-</div>
-
-<h3>6-2. DIC・敗血症（アップコーディング注意）</h3>
-<p>DIC（130100）及び敗血症（180010）はアップコーディングが多い分類として指摘されています。</p>
-<ul>
-  <li>DIC：「DIC診断基準」等に準拠した検査結果等が必要</li>
-  <li>敗血症：関係学会のガイドラインを踏まえた診療行為が一連の経過に含まれていること</li>
-  <li>特に入院後発症疾患（続発症）の場合は特段の留意が必要</li>
+  <li>原則：入院期間中に診断を確定し、確定病名でDPCを決定</li>
+  <li>確定しなかった場合：「○○疑い」で選択可</li>
+  <li>Rコードは原則使用不可（例外は付録参照）</li>
+  <li><strong>よくあるミス：</strong>確定診断がついたのに修正されていない → 退院前に必ず確認</li>
 </ul>
 
-<h3>6-3. 複合分類項目（○○を伴う△△）</h3>
-<p>ICDのダブルコーディングルールはDPCでは採用しない。医療資源の投入量で選択。</p>
-<div class="point-box">
-  例：高血圧性腎不全 → 高血圧性腎不全（I120）を選択<br>
-  例：糖尿病性白内障 → 白内障治療が主体なら H280、糖尿病治療が主体なら E103
-</div>
+<h3>5-2. DIC（130100）・敗血症（180010）</h3>
+<ul>
+  <li>アップコーディングが多い分類として指摘されている</li>
+  <li>DIC：DIC診断基準（FDP値、血小板数、フィブリノゲン濃度等）に準拠が必要</li>
+  <li>敗血症：関係学会ガイドラインを踏まえた診療行為が必要</li>
+  <li>入院後発症疾患の場合は特段の留意が必要</li>
+</ul>
 
-<h3>6-4. 急性 vs 慢性</h3>
+<h3>5-3. 急性 vs 慢性</h3>
 <ul>
   <li>急性・慢性の区別は<strong>必須要件</strong></li>
-  <li>1入院中に急性→慢性へ移行した場合 → <strong>急性を選択</strong></li>
+  <li>1入院中に急性→慢性へ移行 → <strong>急性を選択</strong></li>
   <li>慢性膵炎の急性増悪 ≠ 急性膵炎（すべてが同義ではない）</li>
   <li>慢性閉塞性肺疾患の急性増悪 → J441（複合コードあり）</li>
 </ul>
 
-<h3>6-5. 処置後合併症（180040）</h3>
+<h3>5-4. 処置後合併症（180040）</h3>
 <ul>
-  <li>本来の治療目的の疾患よりも合併症への医療資源投入が<strong>明らかに大きい</strong>場合に限る</li>
-  <li>本来の手術・処置は既に終了していることが条件</li>
+  <li>合併症への医療資源投入が本来の治療より<strong>明らかに大きい</strong>場合のみ</li>
+  <li>本来の手術・処置は既に終了していること</li>
   <li>傷病名に「術後」「処置後」の記載が必要</li>
 </ul>
 
-<h3>6-6. 抜釘目的入院 <span class="new-badge">R8新規</span></h3>
-<div class="qa-box">
-  <div class="qa-q">コーディングテキスト IV.8.(6) / 疑義解釈 問3-1-6：抜釘目的のみで入院した場合の医療資源病名は？</div>
-  <div class="qa-a">「○○骨折」とすること。</div>
+<h3>5-5. 抜釘目的入院 <span class="new">R8新規</span></h3>
+<div class="note">
+医療資源病名は「○○骨折」とする。（コーディングテキスト IV.8.(6) / 疑義解釈 問3-1-6）
 </div>
 
-<h3>6-7. 異なる診断群分類の複数ICDコード <span class="new-badge">R8新規</span></h3>
-<div class="qa-box">
-  <div class="qa-q">コーディングテキスト IV.8.(7) / 疑義解釈 問3-1-10：異なる上6桁に該当する複数のICDコードが選択されうる場合は？</div>
-  <div class="qa-a">
-    ① 慢性維持透析患者の透析シャント病変 → 原則として慢性腎炎症候群・慢性間質性腎炎・慢性腎不全（110280）に該当するICDコードを選択<br>
-    ② 人工股関節置換術後の人工関節周囲骨折（外傷）→ 原則として関節・大腿近位の骨折（160800）に該当するICDコードを選択
-  </div>
+<h3>5-6. 異なる診断群分類の複数ICDコード <span class="new">R8新規</span></h3>
+<div class="note">
+① 慢性維持透析患者の透析シャント病変 → 慢性腎炎症候群・慢性間質性腎炎・慢性腎不全（110280）のICDコードを選択<br>
+② 人工股関節置換術後の人工関節周囲骨折（外傷）→ 関節・大腿近位の骨折（160800）のICDコードを選択<br>
+（コーディングテキスト IV.8.(7) / 疑義解釈 問3-1-10）
 </div>
 
-<h3>6-8. 疑義解釈Q&amp;A 実務で重要な項目</h3>
+<h3>5-7. 複合分類項目（○○を伴う△△）</h3>
+<ul>
+  <li>ICDのダブルコーディングルールはDPCでは不採用。医療資源投入量で選択</li>
+  <li>例：糖尿病性白内障 → 白内障治療が主体なら H280、糖尿病治療が主体なら E103</li>
+  <li>「○○を伴う」情報を傷病名に含めること</li>
+</ul>
 
-<div class="qa-box">
-  <div class="qa-q">問3-1-3：医療資源病名は、DPC算定病床以外の医療資源投入量も含めて考えるのか。</div>
-  <div class="qa-a">含めない。DPC算定病床に入院していた期間において決定する。</div>
-</div>
-<div class="qa-box">
-  <div class="qa-q">問3-1-4：合併症に対する治療に医療資源を最も投入した場合、合併症を医療資源病名とするのか。</div>
-  <div class="qa-a">そのとおり。</div>
-</div>
-<div class="qa-box">
-  <div class="qa-q">問3-1-7：退院時処方に係る薬剤料や手術で使用した薬剤料を医療資源に含めることができるか。</div>
-  <div class="qa-a">含めることはできない。</div>
-</div>
-<div class="qa-box">
-  <div class="qa-q">問3-2-1：手術を実施する予定で入院したが未実施の時点で「手術あり」としてよいか。</div>
-  <div class="qa-a">入院診療計画等に記載があり、患者等への説明が行われている場合は「手術あり」で算定する。</div>
-</div>
-<div class="qa-box">
-  <div class="qa-q">問3-3-2：手術に伴う人工呼吸は「人工呼吸あり」を選択するか。</div>
-  <div class="qa-a">手術当日に手術に関連して行う人工呼吸は、術前・術後にかかわらず「人工呼吸なし」を選択する。</div>
-</div>
-<div class="qa-box">
-  <div class="qa-q">問3-3-5：手術中に行った化学療法のみで「化学療法あり」を選択できるか。</div>
-  <div class="qa-a">選択できない。手術中の使用、外来・退院時、在宅医療での処方は「化学療法」に含まれない。</div>
-</div>
-<div class="qa-box">
-  <div class="qa-q">問3-4-5：定義副傷病の有無は、疑い病名で「あり」と判断してよいか。</div>
-  <div class="qa-a">疑い病名のみである場合は「定義副傷病なし」と判断する。</div>
-</div>
-<div class="qa-box">
-  <div class="qa-q">問3-4-7：定義副傷病は治療の有無で判断するのか。</div>
-  <div class="qa-a">医療資源の投入量に影響を与えているのであれば、治療の有無にかかわらず「あり」と判断する。</div>
-</div>
+<h3>5-8. 副傷病名の注意点</h3>
+<ul>
+  <li>今回の1入院期間が対象（以前の入院に関連する傷病は選択しない）</li>
+  <li>疑い病名のみの場合は「定義副傷病なし」</li>
+  <li>治療の有無によらず、医療資源投入量に影響があれば「あり」</li>
+  <li>レセプトでは最大4つ（影響度の大きい順）、様式1では最大10</li>
+</ul>
 
-<!-- ========== 7. R8変更点 ========== -->
+<!-- 6 -->
 <div class="page-break"></div>
-<h2 id="sec7">7. R8版（第7版）の主な変更点</h2>
-<p>R6版（第6版）からの主な変更点です。</p>
+<h2 id="s6">6. 疑義解釈Q&amp;A（実務で頻出）</h2>
+<p style="font-size:8.5pt; color:#555; margin-bottom:8px;">出典：疑義解釈資料の送付について（その2）令和8年3月31日 別添3</p>
+
+<h3>6-1. 医療資源病名の選択</h3>
+
+<div class="qa">
+<div class="qa-q">問3-1-1：「医療資源を最も投入した傷病」はどのように選択するのか。</div>
+<div class="qa-a">入院期間において治療の対象となった傷病の中から主治医がICD10コードにより選択する。</div>
+</div>
+<div class="qa">
+<div class="qa-q">問3-1-2：独立した複数の疾病に対して治療が行われた場合にも1つに限るのか。</div>
+<div class="qa-a">そのとおり。</div>
+</div>
+<div class="qa">
+<div class="qa-q">問3-1-3：DPC算定病床以外の医療資源投入量も含めて考えるのか。</div>
+<div class="qa-a">含めない。DPC算定病床に入院していた期間において決定する。</div>
+</div>
+<div class="qa">
+<div class="qa-q">問3-1-4：合併症に対する治療に最も医療資源を投入した場合、合併症を医療資源病名とするのか。</div>
+<div class="qa-a">そのとおり。</div>
+</div>
+<div class="qa">
+<div class="qa-q">問3-1-5：医療資源病名と手術内容が関連しないこともあり得るか。</div>
+<div class="qa-a">あり得る。</div>
+</div>
+<div class="qa">
+<div class="qa-q">問3-1-6：抜釘目的のみで入院。医療資源病名は「○○骨折」でよいか。<span class="new">R8新規</span></div>
+<div class="qa-a">「○○骨折」でよい。</div>
+</div>
+<div class="qa">
+<div class="qa-q">問3-1-7：退院時処方の薬剤料や手術中の薬剤料を医療資源に含めることができるか。</div>
+<div class="qa-a">含めることはできない。</div>
+</div>
+<div class="qa">
+<div class="qa-q">問3-1-8：疑い病名により診断群分類区分を決定してよいのか。</div>
+<div class="qa-a">原則として入院期間中に診断を確定し、確定した病名で決定。ただし検査入院等で確定しなかった場合は疑い病名で決定できる。</div>
+</div>
+<div class="qa">
+<div class="qa-q">問3-1-9：「R798 遺伝性乳癌卵巣癌症候群」が選択されうる患者はどうするか。</div>
+<div class="qa-a">実施した手術等に基づき、卵巣・子宮附属器の悪性腫瘍（120010）又は乳房の悪性腫瘍（090010）のICDコードを選択。「入院時併存傷病名」にR798を記載。</div>
+</div>
+<div class="qa">
+<div class="qa-q">問3-1-10：異なる上6桁に該当する複数のICDコードが選択されうる場合は？<span class="new">R8新規</span></div>
+<div class="qa-a">① 慢性維持透析の透析シャント病変 → 慢性腎不全等（110280）のICDコードを選択<br>② 人工関節周囲骨折（外傷）→ 関節・大腿近位の骨折（160800）のICDコードを選択</div>
+</div>
+
+<h3>6-2. 手術の取扱い</h3>
+
+<div class="qa">
+<div class="qa-q">問3-2-1：手術予定で入院したが未実施の時点で「手術あり」としてよいか。</div>
+<div class="qa-a">入院診療計画等に記載があり、患者等への説明が行われている場合は「手術あり」で算定する。</div>
+</div>
+<div class="qa">
+<div class="qa-q">問3-2-2：同一手術野で2以上の手術を同時に行い、算定しなかった手術が定義テーブルに含まれる場合、その分岐を選択できるか。</div>
+<div class="qa-a">選択できる。ただし算定しなかった手術の区分番号・名称・実施日を「診療関連情報」欄に記載。</div>
+</div>
+<div class="qa">
+<div class="qa-q">問3-2-4：輸血のみを実施した場合は「手術あり」「手術なし」のいずれか。</div>
+<div class="qa-a">「手術あり」を選択。ただし手術等管理料又は輸血管理料のみの場合は「手術なし」。</div>
+</div>
+<div class="qa">
+<div class="qa-q">問3-2-6：他院で手術実施後に転院。自院で手術なしの場合は「手術なし」か。</div>
+<div class="qa-a">そのとおり。</div>
+</div>
+<div class="qa">
+<div class="qa-q">問3-2-7：入院日IIIを超えた後に手術を行った場合も「手術あり」か。</div>
+<div class="qa-a">そのとおり。</div>
+</div>
+
+<h3>6-3. 手術・処置等1・2</h3>
+
+<div class="qa">
+<div class="qa-q">問3-3-2：手術に伴う人工呼吸は「人工呼吸あり」を選択するか。</div>
+<div class="qa-a">手術当日に手術に関連して行う人工呼吸は、術前・術後にかかわらず「人工呼吸なし」を選択。</div>
+</div>
+<div class="qa">
+<div class="qa-q">問3-3-3：化学療法と放射線療法の両方を行った場合の手術・処置等2は？</div>
+<div class="qa-a">「放射線療法あり」を選択。放射線治療ありには化学療法併用も含まれる。</div>
+</div>
+<div class="qa">
+<div class="qa-q">問3-3-5：手術中に行った化学療法のみで「化学療法あり」を選択できるか。</div>
+<div class="qa-a">選択できない。手術中の使用、外来・退院時、在宅での処方は含まれない。</div>
+</div>
+<div class="qa">
+<div class="qa-q">問3-3-8：ゾメタ等、高カルシウム血症の治療にも使う薬剤は全て「化学療法あり」か。</div>
+<div class="qa-a">抗腫瘍効果を目的に使用した場合のみ「化学療法あり」。高カルシウム血症治療目的の場合は選択できない。</div>
+</div>
+<div class="qa">
+<div class="qa-q">問3-3-9：後発医薬品が保険適用された場合、同じ分岐を選択できるか。</div>
+<div class="qa-a">選択できる（分岐は成分名で行っており、先発品か後発品かは問わない）。</div>
+</div>
+<div class="qa">
+<div class="qa-q">問3-3-11：手術に伴って中心静脈注射を実施した場合、「あり」「なし」どちらか。</div>
+<div class="qa-a">手術当日に手術に関連して行う場合は「中心静脈注射なし」を選択。</div>
+</div>
+
+<h3>6-4. 副傷病名等</h3>
+
+<div class="qa">
+<div class="qa-q">問3-4-5：定義副傷病の有無は疑い病名で「あり」と判断してよいか。</div>
+<div class="qa-a">疑い病名のみの場合は「定義副傷病なし」と判断する。</div>
+</div>
+<div class="qa">
+<div class="qa-q">問3-4-7：定義副傷病は治療の有無で判断するのか。</div>
+<div class="qa-a">医療資源投入量に影響を与えているのであれば、治療の有無にかかわらず「あり」。</div>
+</div>
+
+<h3>6-5. 算定・再入院</h3>
+
+<div class="qa">
+<div class="qa-q">問4-5：DPC算定病床から地域包括ケア病棟に転棟した場合の算定は？</div>
+<div class="qa-a">転棟前のDPC区分で入院日IIまでは診断群分類点数表により算定。入院日IIを超えた日以降は地域包括ケア病棟入院料を算定。</div>
+</div>
+<div class="qa">
+<div class="qa-q">問9-2：7日以内の再入院で「一連」とみなすのはどのような場合か。</div>
+<div class="qa-a">① 再入院の入院契機病名と前回の医療資源病名の上2桁が一致 ② 再入院と前回の医療資源病名の上6桁が一致 ③ 再入院の入院契機にICD定義外コード又は180040コードを選択した場合</div>
+</div>
+<div class="qa">
+<div class="qa-q">問10-1：転院先で使用するために薬剤を処方する場合、退院時処方として算定できるか。</div>
+<div class="qa-a">算定できない。</div>
+</div>
+<div class="qa">
+<div class="qa-q">問10-2：7日以内の再入院の場合、前回の退院時処方は算定できるか。</div>
+<div class="qa-a">退院中に使用した分に限り算定可。退院日当日に再入院の場合は算定不可。</div>
+</div>
+<div class="qa">
+<div class="qa-q">問11-1：DPC入院中の患者が他医療機関を受診した場合の取扱いは？</div>
+<div class="qa-a">他医療機関の診療費用は入院中の医療機関で算定。医療機関間の精算は合議による。算定方法（DPC/出来高）にかかわらず同じ取扱い。</div>
+</div>
+
+<h3>6-6. 入院日III超の化学療法</h3>
+
+<div class="qa">
+<div class="qa-q">問8-1：入院日IIIを超えて化学療法を実施した場合、制吐剤等の薬剤料は算定できるか。</div>
+<div class="qa-a">算定できる。ただし特定薬剤分岐の場合、併用療法の薬剤・溶剤は算定不可。</div>
+</div>
+<div class="qa">
+<div class="qa-q">問8-4：悪性腫瘍以外の患者で、手術・処置等1の対象検査を入院日III超に実施した場合、特定保険医療材料等は算定できるか。</div>
+<div class="qa-a">算定できる。</div>
+</div>
+
+<!-- 7 -->
+<div class="page-break"></div>
+<h2 id="s7">7. R8版（第7版）の主な変更点</h2>
 
 <table>
-<tr><th style="width:5%;">No</th><th style="width:20%;">項目</th><th>変更内容</th><th style="width:15%;">実務への影響</th></tr>
-<tr><td>1</td><td>IV.8.(6) <span class="new-badge">新規</span></td><td><strong>抜釘目的のみの入院</strong>：医療資源病名は「○○骨折」とする</td><td style="background:#FFF9C4;">確認必要</td></tr>
-<tr><td>2</td><td>IV.8.(7) <span class="new-badge">新規</span></td><td><strong>異なる診断群分類の複数ICDコード</strong>：人工関節周囲骨折→関節・大腿近位の骨折（160800）を選択</td><td style="background:#FFF9C4;">確認必要</td></tr>
-<tr><td>3</td><td>図表2</td><td>手術・処置等2の選択肢：A〜E → <strong>A〜G</strong>に拡大（F, G追加）</td><td style="background:#FFF9C4;">定義テーブル確認</td></tr>
-<tr><td>4</td><td>II.4(2)</td><td>Q&amp;A新設：標準病名マスターの使用、ICDコードが分からない場合の問い合わせ先</td><td>参考情報</td></tr>
-<tr><td>5</td><td>II.2</td><td>「手術・処置等の下の層から遡って傷病名を選択するのは正しい考え方ではない」→「3層目から遡って傷病名を選択するべきではない」に明確化</td><td>表現変更のみ</td></tr>
-<tr><td>6</td><td>参照通知</td><td>「傷病名コードの統一の推進について」令和6年→令和8年に更新</td><td>参照先更新</td></tr>
-<tr><td>7</td><td>I.1.1)</td><td>データ提出加算病院の活用について「視野に入れて」→「想定している」に変更</td><td>表現変更のみ</td></tr>
+<tr><th>No</th><th>項目</th><th>変更内容</th></tr>
+<tr><td>1</td><td>IV.8.(6) <span class="new">新規</span></td><td>抜釘目的入院の医療資源病名は「○○骨折」</td></tr>
+<tr><td>2</td><td>IV.8.(7) <span class="new">新規</span></td><td>異なる上6桁の複数ICDコード選択ルール（透析シャント病変、人工関節周囲骨折）</td></tr>
+<tr><td>3</td><td>図表2</td><td>手術・処置等2の選択肢 A〜E → A〜G に拡大</td></tr>
+<tr><td>4</td><td>II.4(2)</td><td>Q&A新設（標準病名マスターの使用、ICDコード不明時の対応）</td></tr>
+<tr><td>5</td><td>II.2</td><td>表現明確化：「3層目から遡って傷病名を選択するべきではない」</td></tr>
+<tr><td>6</td><td>参照通知</td><td>「傷病名コードの統一の推進について」令和6年→令和8年</td></tr>
+<tr><td>7</td><td>全体</td><td>ページ数 81→83（+2ページ）、各章開始ページが後ろにずれ</td></tr>
 </table>
 
-<!-- ========== 8. 付録 ========== -->
-<div class="page-break"></div>
-<h2 id="sec8">8. 付録</h2>
+<!-- 8 -->
+<h2 id="s8">8. 付録</h2>
 
-<h3>8-1. Rコード使用可能リスト</h3>
-<p>Rコード（R00〜R99）は原則として医療資源病名として使用できませんが、以下は<strong>例外的に使用可能</strong>です：</p>
+<h3>8-1. Rコード 医療資源病名として使用可能なもの</h3>
 <table>
 <tr><th>ICDコード</th><th>傷病名</th></tr>
 <tr><td>R040</td><td>鼻出血</td></tr>
@@ -436,45 +455,39 @@
 <tr><td>R048</td><td>気道のその他の部位からの出血</td></tr>
 <tr><td>R049</td><td>気道からの出血、詳細不明</td></tr>
 <tr><td>R560</td><td>熱性けいれん</td></tr>
-<tr><td>R610</td><td>限局性発汗過多（多汗）症</td></tr>
-<tr><td>R611</td><td>全身性発汗過多（多汗）症</td></tr>
-<tr><td>R619</td><td>発汗過多（多汗）症、詳細不明</td></tr>
+<tr><td>R610, R611, R619</td><td>発汗過多（多汗）症</td></tr>
 <tr><td>R730</td><td>ブドウ糖負荷試験異常</td></tr>
 </table>
-<div class="point-box">
-<strong>注意：</strong>手術や処置が実施された場合、通常は原疾患があると考えられるため、Rコードの選択は慎重に。Rコードが選択される事例の多くは、入院契機病名から修正されなかったものと推察される。
-</div>
+<div class="note">上記以外のRコード（R00〜R99）は原則として医療資源病名として使用不可。手術・処置が実施された場合は原疾患があると考えられるため、Rコードは慎重に。</div>
 
-<h3>8-2. .9コード（詳細不明）の正しい対応例</h3>
+<h3>8-2. .9コード（詳細不明）の対応例</h3>
 <table>
-<tr><th>詳細不明コード（NG）</th><th>適切なコード（OK）</th><th>判断ポイント</th></tr>
-<tr><td>I639 脳梗塞、詳細不明</td><td>I633 アテローム血栓性脳梗塞<br>I634 脳塞栓症 等</td><td>脳実質外動脈か脳動脈か、血栓症か塞栓症かを区別</td></tr>
-<tr><td>I409 急性心筋炎、詳細不明</td><td>I400 感染性心筋炎<br>I401 孤立性心筋炎 等</td><td>感染性か孤立性か、病原菌の確認</td></tr>
-<tr><td>I509 心不全、詳細不明</td><td>I500 うっ血性心不全<br>I501 左室不全</td><td>うっ血性か左室不全かを区別</td></tr>
-<tr><td>E149 糖尿病、詳細不明</td><td>E119 2型糖尿病<br>E109 1型糖尿病</td><td>1型/2型を区別</td></tr>
-<tr><td>M069 関節リウマチ、詳細不明</td><td>M058 血清反応陽性RA<br>M060 血清反応陰性RA</td><td>血清反応の陽性/陰性を区別</td></tr>
-<tr><td>K559 腸の血行障害、詳細不明</td><td>K550 急性血管障害<br>K551 慢性血管障害</td><td>急性/慢性を区別</td></tr>
+<tr><th>詳細不明（避けるべき）</th><th>適切なコード</th><th>判断ポイント</th></tr>
+<tr><td>I639 脳梗塞、詳細不明</td><td>I633 アテローム血栓性脳梗塞 等</td><td>血栓症/塞栓症、動脈の種類</td></tr>
+<tr><td>I409 急性心筋炎、詳細不明</td><td>I400 感染性 / I401 孤立性</td><td>病原菌の有無</td></tr>
+<tr><td>I509 心不全、詳細不明</td><td>I500 うっ血性 / I501 左室不全</td><td>心不全の種類</td></tr>
+<tr><td>E149 糖尿病、詳細不明</td><td>E119 2型 / E109 1型</td><td>1型/2型の区別</td></tr>
+<tr><td>M069 関節リウマチ、詳細不明</td><td>M058 血清反応陽性RA 等</td><td>血清反応の陽性/陰性</td></tr>
+<tr><td>K559 腸の血行障害、詳細不明</td><td>K550 急性 / K551 慢性</td><td>急性/慢性の区別</td></tr>
 </table>
 
 <h3>8-3. 用語集</h3>
 <table>
-<tr><th style="width:25%;">用語</th><th>説明</th></tr>
-<tr><td><strong>DPC</strong></td><td>Diagnosis Procedure Combination（診断群分類）。傷病名と手術・処置の組み合わせによる患者分類</td></tr>
-<tr><td><strong>DPC/PDPS</strong></td><td>Per-Diem Payment System。診断群分類による1日当たり包括支払い方式</td></tr>
-<tr><td><strong>ICD</strong></td><td>International Statistical Classification of Diseases（国際疾病分類）。ICD-10 2013年版準拠</td></tr>
-<tr><td><strong>MDC</strong></td><td>Major Diagnostic Category（主要診断群）。DPCの最上位分類（01〜18）</td></tr>
-<tr><td><strong>医療資源病名</strong></td><td>入院期間中に医療資源を最も投入した傷病名。退院時に1つ決定</td></tr>
-<tr><td><strong>副傷病名</strong></td><td>医療資源病名以外の、患者管理に影響を与えた傷病名（入院時併存症、入院後発症疾患）</td></tr>
-<tr><td><strong>Rコード</strong></td><td>症状、徴候及び異常臨床所見で他に分類されないもの。原則として医療資源病名として使用不可</td></tr>
-<tr><td><strong>コーディング</strong></td><td>ICDやDPCのコードを付与すること</td></tr>
-<tr><td><strong>アップコーディング</strong></td><td>より高い診療報酬を得るために意図的に不適切なDPCコーディングを行うこと（禁止）</td></tr>
-<tr><td><strong>定義テーブル</strong></td><td>各診断群分類における手術・処置等の分岐を定義した表</td></tr>
-<tr><td><strong>.9コード</strong></td><td>ICD4桁目の「部位不明・詳細不明」を表す細分類項目。例外的な使用に限る</td></tr>
+<tr><th>用語</th><th>説明</th></tr>
+<tr><td>DPC</td><td>Diagnosis Procedure Combination. 診断群分類</td></tr>
+<tr><td>DPC/PDPS</td><td>診断群分類による1日当たり包括支払い方式</td></tr>
+<tr><td>ICD</td><td>国際疾病分類. ICD-10 2013年版準拠</td></tr>
+<tr><td>MDC</td><td>Major Diagnostic Category. 主要診断群（01〜18）</td></tr>
+<tr><td>医療資源病名</td><td>入院中に医療資源を最も投入した傷病名。退院時に1つ決定</td></tr>
+<tr><td>副傷病名</td><td>患者管理に影響を与えた傷病名（入院時併存症、入院後発症疾患）</td></tr>
+<tr><td>Rコード</td><td>症状・徴候で他に分類されないもの。原則として医療資源病名に使用不可</td></tr>
+<tr><td>アップコーディング</td><td>高い診療報酬を得るための意図的な不適切コーディング（禁止）</td></tr>
+<tr><td>定義テーブル</td><td>各診断群分類の手術・処置等の分岐を定義した表</td></tr>
 </table>
 
 <div class="footer">
-  R8年度 DPCコーディング早見ガイド ｜ DPC/PDPS 傷病名コーディングテキスト 改定版（第7版）+ 疑義解釈資料（その2）準拠<br>
-  本資料は厚生労働省保険局医療課の原文に基づき作成した解説資料です。正式な取扱いについては原文をご確認ください。
+  R8年度 DPCコーディング早見ガイド ｜ コーディングテキスト第7版 + 疑義解釈（その2）準拠<br>
+  厚生労働省保険局医療課の原文に基づく解説資料です。正式な取扱いについては原文をご確認ください。
 </div>
 
 </body>
